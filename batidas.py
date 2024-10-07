@@ -55,31 +55,57 @@ if uploaded_file:
         upper_bound = Q3 + 1.5 * IQR
         df_operador_no_outliers = df_operador_clean[(df_operador_clean >= lower_bound) & (df_operador_clean <= upper_bound)]
 
+        # Cálculo das Estatísticas
+        mean_with_outliers = df_operador_clean.mean()
+        median_with_outliers = df_operador_clean.median()
+        mean_no_outliers = df_operador_no_outliers.mean()
+        median_no_outliers = df_operador_no_outliers.median()
+        num_outliers = len(df_operador_clean) - len(df_operador_no_outliers)
+        total_points_with_outliers = len(df_operador_clean)
+        total_points_no_outliers = len(df_operador_no_outliers)
+
         # Verificação se há dados após a filtragem
         if len(df_operador_no_outliers) == 0:
             st.warning("Não há dados suficientes após a filtragem para gerar o gráfico.")
         else:
             # Mostrar algumas estatísticas básicas dos dados antes e depois da remoção dos outliers
             st.write("### Estatísticas dos Dados")
-            st.write(f"**Com Outliers**: Média: {df_operador_clean.mean():.2f}, Mediana: {df_operador_clean.median():.2f}, Número de pontos: {len(df_operador_clean)}")
-            st.write(f"**Sem Outliers**: Média: {df_operador_no_outliers.mean():.2f}, Mediana: {df_operador_no_outliers.median():.2f}, Número de pontos: {len(df_operador_no_outliers)}")
+            st.write(f"**Com Outliers**: Média: {mean_with_outliers:.2f}, Mediana: {median_with_outliers:.2f}, Número de pontos: {total_points_with_outliers}")
+            st.write(f"**Sem Outliers**: Média: {mean_no_outliers:.2f}, Mediana: {median_no_outliers:.2f}, Número de pontos: {total_points_no_outliers}")
 
             # Criação do Gráfico
             if st.button("Gerar Gráfico"):
                 fig, ax = plt.subplots(figsize=(10, 6))
+                fig.subplots_adjust(bottom=0.3)  # Adiciona margem inferior para evitar sobreposição da legenda
+
+                # Texto da legenda em formato de tabela com tabulação corrigida
+                legenda_texto = (
+                    f"{'Estatística':<25}{'Com Outliers':<15}{'Sem Outliers':<15}\n"
+                    f"{'-'*55}\n"
+                    f"{'Média':<25}{mean_with_outliers:<15.2f}{mean_no_outliers:<15.2f}\n"
+                    f"{'Mediana':<25}{median_with_outliers:<15.2f}{median_no_outliers:<15.2f}\n"
+                    f"{'Total de pontos':<25}{total_points_with_outliers:<15}{total_points_no_outliers:<15}\n"
+                    f"{'Outliers removidos':<25}{'':<15}{num_outliers:<15}"
+                )
                 
                 if tipo_grafico == 'Boxplot':
                     ax.boxplot(df_operador_no_outliers, vert=False, showmeans=True, meanline=True)
                     ax.set_title(f'Boxplot de "{found_column}" - Operador: {operador_selecionado} - Alimento: {alimento_selecionado}')
                     ax.set_xlabel(found_column)
                     ax.grid(True)
-                
+
+                    # Adicionando a legenda
+                    plt.figtext(0.1, 0.01, legenda_texto, ha='left', fontsize=10, family='monospace', bbox={"facecolor": "white", "alpha": 0.5, "pad": 5})
+
                 elif tipo_grafico == 'Histograma':
                     ax.hist(df_operador_no_outliers, bins=15, edgecolor='black', alpha=0.7)
                     ax.set_title(f'Histograma de "{found_column}" - Operador: {operador_selecionado} - Alimento: {alimento_selecionado}')
                     ax.set_xlabel(found_column)
                     ax.set_ylabel('Frequência')
                     ax.grid(True)
+
+                    # Adicionando a legenda
+                    plt.figtext(0.1, 0.01, legenda_texto, ha='left', fontsize=10, family='monospace', bbox={"facecolor": "white", "alpha": 0.5, "pad": 5})
 
                 # Renderizar o Gráfico no Streamlit
                 st.pyplot(fig)
