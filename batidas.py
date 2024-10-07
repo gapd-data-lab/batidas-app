@@ -4,10 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import re
 
-# Carregar o arquivo CSV
-uploaded_file = st.file_uploader("Escolha o arquivo CSV", type=["csv"])
+# Carregar o arquivo XLSX
+uploaded_file = st.file_uploader("Escolha o arquivo Excel (.xlsx)", type=["xlsx"])
 if uploaded_file:
-    df = pd.read_csv(uploaded_file, encoding='utf-8', sep=',', on_bad_lines='skip')
+    # Ler o arquivo Excel, descartando as duas primeiras linhas e a primeira coluna
+    df = pd.read_excel(uploaded_file, skiprows=2)  # `skiprows=2` ignora as duas primeiras linhas
+    df = df.iloc[:, 1:]  # Remove a primeira coluna que está vazia
 
     # Função para encontrar a coluna de interesse
     def find_column_flexible(df, target_column):
@@ -83,4 +85,4 @@ if uploaded_file:
                 st.pyplot(fig)
 
     else:
-        st.error("Coluna 'DIFERENÇA (% MÓDULO)' não encontrada no arquivo CSV.")
+        st.error("Coluna 'DIFERENÇA (% MÓDULO)' não encontrada no arquivo Excel.")
