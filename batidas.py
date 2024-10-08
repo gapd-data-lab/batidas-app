@@ -199,12 +199,14 @@ def main():
                 st.download_button(label="Baixar Gráfico", data=buffer, file_name="grafico.png", mime="image/png")
 
                 st.write("### Estatísticas das Diferenças Percentuais em Módulo")
-                st.table({
+                
+                # Criando o DataFrame com os dados da tabela
+                df_stats = pd.DataFrame({
                     'Estatística': [
-                        'Média (Com Outliers)', 
-                        'Mediana (Com Outliers)', 
-                        'Média (Sem Outliers)', 
-                        'Mediana (Sem Outliers)', 
+                        'Média (Com Outliers - valor em %)', 
+                        'Mediana (Com Outliers -  valor em %)', 
+                        'Média (Sem Outliers - valor em %)', 
+                        'Mediana (Sem Outliers - valor em %)', 
                         'Outliers Removidos', 
                         'Diferença > 3% e <= 5%', 
                         'Diferença > 5% e <= 7%', 
@@ -217,15 +219,15 @@ def main():
                         f"{stats['median_with_outliers']:.2f}",
                         f"{stats['mean_no_outliers']:.2f}",
                         f"{stats['median_no_outliers']:.2f}",
-                        stats['num_outliers'],
-                        stats['faixa_3_5'],
-                        stats['faixa_5_7'],
-                        stats['faixa_7_9'],
-                        stats['faixa_acima_9'],
-                        len(df_operador)
+                        f"{stats['num_outliers']}",
+                        f"{stats['faixa_3_5']}",
+                        f"{stats['faixa_5_7']}",
+                        f"{stats['faixa_7_9']}",
+                        f"{stats['faixa_acima_9']}",
+                        f"{len(df_operador)}"
                     ],
                     'Percentual (%)': [
-                        '',  # Células vazias para as primeiras 5 linhas
+                        '',
                         '',
                         '',
                         '',
@@ -237,6 +239,13 @@ def main():
                         "100.00"
                     ]
                 })
+
+                # Aplicando o estilo CSS para alinhar as colunas à direita
+                st.markdown(
+                    df_stats.style.set_properties(**{'text-align': 'left'}, subset=['Estatística'])
+                            .set_properties(**{'text-align': 'right'}, subset=['Valor', 'Percentual (%)'])
+                            .to_html(), unsafe_allow_html=True
+                )
 
     # Verificação de erro para coluna ausente
     if uploaded_file and 'DIFERENÇA (%)' not in df.columns:
