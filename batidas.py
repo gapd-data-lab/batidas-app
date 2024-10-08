@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import re
 import io
+import datetime
 
 def load_and_process_data(uploaded_file):
     """
@@ -15,8 +16,15 @@ def load_and_process_data(uploaded_file):
     df = pd.read_excel(uploaded_file, skiprows=2)
     df = df.iloc[:, 1:]
 
+    # Corrigir possíveis variações de nome de coluna
+    df.columns = df.columns.str.strip().str.upper()
+
     # Converter a coluna 'DIFERENÇA (%)' para numérica e remover valores ausentes
-    df['DIFERENÇA (%)'] = pd.to_numeric(df['DIFERENÇA (%)'], errors='coerce').dropna()
+    if 'DIFERENÇA (%)' in df.columns:
+        df['DIFERENÇA (%)'] = pd.to_numeric(df['DIFERENÇA (%)'], errors='coerce').dropna()
+    else:
+        st.error("Coluna 'DIFERENÇA (%)' não encontrada no arquivo Excel.")
+        return None, None, None, None
 
     # Cálculo do IQR para identificação de outliers
     Q1 = df['DIFERENÇA (%)'].quantile(0.25)
@@ -30,24 +38,33 @@ def load_and_process_data(uploaded_file):
 
     return df, df_no_outliers, lower_bound, upper_bound
 
-def filter_data(df, df_no_outliers, operadores_selecionados, alimentos_selecionados):
+def filter_data(df, df_no_outliers, operadores_selecionados, alimentos_selecionados, start_date, end_date):
     """
-    Filtra os dados com base nos operadores e alimentos selecionados pelo usuário.
+    Filtra os dados com base nos operadores, alimentos selecionados e no período de datas.
     """
+    # Converter a coluna 'DATA' para datetime, se ainda não estiver
+    df['DATA'] = pd.to_datetime(df['DATA'], errors='coerce')
+    df_no_outliers = df_no_outliers.copy()
+    df_no_outliers['DATA'] = pd.to_datetime(df_no_outliers['DATA'], errors='coerce')
+
+    # Filtrar por período de datas
+    start_date = pd.to_datetime(start_date)
+    end_date = pd.to_datetime(end_date) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)  # Ajustar o final do dia
+    df = df[(df['DATA'] >= start_date) & (df['DATA'] <= end_date)]
+    df_no_outliers = df_no_outliers[(df_no_outliers['DATA'] >= start_date) & (df_no_outliers['DATA'] <= end_date)]
+
     # Filtrar por operadores, se não for selecionado 'Todos'
     if 'Todos' not in operadores_selecionados:
-        df_operador = df[df['OPERADOR'].isin(operadores_selecionados)]
-    else:
-        df_operador = df
-
+        df = df[df['OPERADOR'].isin(operadores_selecionados)]
+    
     # Filtrar por alimentos, se não for selecionado 'Todos'
     if 'Todos' not in alimentos_selecionados:
-        df_operador = df_operador[df_operador['ALIMENTO'].isin(alimentos_selecionados)]
-
+        df = df[df['ALIMENTO'].isin(alimentos_selecionados)]
+    
     # Filtrar o DataFrame sem outliers para corresponder aos filtros aplicados
-    df_no_outliers_filtered = df_no_outliers[df_no_outliers.index.isin(df_operador.index)]
+    df_no_outliers_filtered = df_no_outliers[df_no_outliers.index.isin(df.index)]
 
-    return df_operador, df_no_outliers_filtered
+    return df, df_no_outliers_filtered
 
 def calculate_statistics(df_operador, df_no_outliers):
     """
@@ -157,95 +174,105 @@ def main():
             # Carregar e processar os dados
             df, df_no_outliers, lower_bound, upper_bound = load_and_process_data(uploaded_file)
 
-            # Preparar listas de seleção para operadores e alimentos
-            operadores = sorted(df['OPERADOR'].unique().tolist())
-            operadores.insert(0, 'Todos')
-            alimentos = sorted(df['ALIMENTO'].unique().tolist())
-            alimentos.insert(0, 'Todos')
+            if df is not None:
+                # Preparar listas de seleção para operadores e alimentos
+                operadores = sorted(df['OPERADOR'].unique().tolist())
+                operadores.insert(0, 'Todos')
+                alimentos = sorted(df['ALIMENTO'].unique().tolist())
+                alimentos.insert(0, 'Todos')
 
-            # Widgets de seleção para o usuário
-            operadores_selecionados = st.multiselect('Escolha os Operadores:', operadores, default=['Todos'])
-            alimentos_selecionados = st.multiselect('Escolha os Alimentos:', alimentos, default=['Todos'])
+                # Widgets de seleção para o usuário
+                operadores_selecionados = st.multiselect('Escolha os Operadores:', operadores, default=['Todos'])
+                alimentos_selecionados = st.multiselect('Escolha os Alimentos:', alimentos, default=['Todos'])
 
-            iniciar_analise = st.button("Gerar")
+                # Widget de seleção de período de datas
+                min_date = df['DATA'].min().date()
+                max_date = df['DATA'].max().date()
+                try:
+                    start_date, end_date = st.date_input('Selecione o Período de Datas:', [min_date, max_date])
+                except ValueError:
+                    st.warning("Por favor, selecione um intervalo de datas válido.")
+                    st.stop()
+
+                iniciar_analise = st.button("Gerar")
 
     with col2:
-        if uploaded_file and iniciar_analise:
+        if uploaded_file and iniciar_analise and df is not None:
             st.header("Resultados da Análise - confinamento SJudas")
 
-            df_operador, df_no_outliers_filtered = filter_data(df, df_no_outliers, operadores_selecionados, alimentos_selecionados)
+            # Filtrar os dados com base nas seleções do usuário
+            df_operador, df_no_outliers_filtered = filter_data(df, df_no_outliers, operadores_selecionados, alimentos_selecionados, start_date, end_date)
 
             if df_operador.empty:
                 st.warning("Não há dados suficientes para gerar a análise.")
             else:
-                stats = calculate_statistics(df_operador, df_no_outliers_filtered)
+                if df_no_outliers_filtered.empty:
+                    st.warning("Não há dados suficientes sem outliers para gerar a análise.")
+                else:
+                    stats = calculate_statistics(df_operador, df_no_outliers_filtered)
 
-                operadores_str = ', '.join([str(op) for op in operadores_selecionados if op != 'Todos']) if 'Todos' not in operadores_selecionados else 'Todos'
-                alimentos_str = ', '.join([str(al) for al in alimentos_selecionados if al != 'Todos']) if 'Todos' not in alimentos_selecionados else 'Todos'
+                    operadores_str = ', '.join([str(op) for op in operadores_selecionados if op != 'Todos']) if 'Todos' not in operadores_selecionados else 'Todos'
+                    alimentos_str = ', '.join([str(al) for al in alimentos_selecionados if al != 'Todos']) if 'Todos' not in alimentos_selecionados else 'Todos'
 
-                fig = create_graph(df_no_outliers_filtered, stats, operadores_str, alimentos_str)
-                
-                st.pyplot(fig)
+                    fig = create_graph(df_no_outliers_filtered, stats, operadores_str, alimentos_str)
+                    
+                    st.pyplot(fig)
 
-                # Adicionando nota explicativa sobre outliers
-                st.info(f"Nota: O histograma acima não inclui outliers. Foram removidos {stats['num_outliers']} outliers para esta análise.")
+                    # Adicionando nota explicativa sobre outliers
+                    st.info(f"Nota: O histograma acima não inclui outliers. Foram removidos {stats['num_outliers']} outliers para esta análise.")
 
-                buffer = io.BytesIO()
-                fig.savefig(buffer, format='png')
-                st.download_button(label="Baixar Gráfico", data=buffer, file_name="grafico.png", mime="image/png")
+                    buffer = io.BytesIO()
+                    fig.savefig(buffer, format='png')
+                    st.download_button(label="Baixar Gráfico", data=buffer, file_name="grafico.png", mime="image/png")
 
-                st.write("### Estatísticas das Diferenças Percentuais em Módulo")
-                
-                # Criando o DataFrame com os dados da tabela
-                df_stats = pd.DataFrame({
-                    'Estatística': [
-                        'Média (Com Outliers - valor em %)', 
-                        'Mediana (Com Outliers -  valor em %)', 
-                        'Média (Sem Outliers - valor em %)', 
-                        'Mediana (Sem Outliers - valor em %)', 
-                        'Outliers Removidos', 
-                        'Diferença > 3% e <= 5%', 
-                        'Diferença > 5% e <= 7%', 
-                        'Diferença > 7% e <= 9%', 
-                        'Diferença > 9%', 
-                        'Total de Pontos'
-                    ],
-                    'Valor': [
-                        f"{stats['mean_with_outliers']:.2f}",
-                        f"{stats['median_with_outliers']:.2f}",
-                        f"{stats['mean_no_outliers']:.2f}",
-                        f"{stats['median_no_outliers']:.2f}",
-                        f"{stats['num_outliers']}",
-                        f"{stats['faixa_3_5']}",
-                        f"{stats['faixa_5_7']}",
-                        f"{stats['faixa_7_9']}",
-                        f"{stats['faixa_acima_9']}",
-                        f"{len(df_operador)}"
-                    ],
-                    'Percentual (%)': [
-                        '',
-                        '',
-                        '',
-                        '',
-                        '',
-                        f"{(stats['faixa_3_5'] / len(df_operador)) * 100:.2f}",
-                        f"{(stats['faixa_5_7'] / len(df_operador)) * 100:.2f}",
-                        f"{(stats['faixa_7_9'] / len(df_operador)) * 100:.2f}",
-                        f"{(stats['faixa_acima_9'] / len(df_operador)) * 100:.2f}",
-                        "100.00"
-                    ]
-                })
+                    st.write("### Estatísticas das Diferenças Percentuais em Módulo")
+                    
+                    # Criando o DataFrame com os dados da tabela
+                    df_stats = pd.DataFrame({
+                        'Estatística': [
+                            'Média (Com Outliers - valor em %)', 
+                            'Mediana (Com Outliers -  valor em %)', 
+                            'Média (Sem Outliers - valor em %)', 
+                            'Mediana (Sem Outliers - valor em %)', 
+                            'Outliers Removidos', 
+                            'Diferença > 3% e <= 5%', 
+                            'Diferença > 5% e <= 7%', 
+                            'Diferença > 7% e <= 9%', 
+                            'Diferença > 9%', 
+                            'Total de Pontos'
+                        ],
+                        'Valor': [
+                            f"{stats['mean_with_outliers']:.2f}",
+                            f"{stats['median_with_outliers']:.2f}",
+                            f"{stats['mean_no_outliers']:.2f}",
+                            f"{stats['median_no_outliers']:.2f}",
+                            f"{stats['num_outliers']}",
+                            f"{stats['faixa_3_5']}",
+                            f"{stats['faixa_5_7']}",
+                            f"{stats['faixa_7_9']}",
+                            f"{stats['faixa_acima_9']}",
+                            f"{len(df_operador)}"
+                        ],
+                        'Percentual (%)': [
+                            '',
+                            '',
+                            '',
+                            '',
+                            '',
+                            f"{(stats['faixa_3_5'] / len(df_operador)) * 100:.2f}",
+                            f"{(stats['faixa_5_7'] / len(df_operador)) * 100:.2f}",
+                            f"{(stats['faixa_7_9'] / len(df_operador)) * 100:.2f}",
+                            f"{(stats['faixa_acima_9'] / len(df_operador)) * 100:.2f}",
+                            "100.00"
+                        ]
+                    })
 
-                # Aplicando o estilo CSS para alinhar as colunas à direita
-                st.markdown(
-                    df_stats.style.set_properties(**{'text-align': 'left'}, subset=['Estatística'])
-                            .set_properties(**{'text-align': 'right'}, subset=['Valor', 'Percentual (%)'])
-                            .to_html(), unsafe_allow_html=True
-                )
-
-    # Verificação de erro para coluna ausente
-    if uploaded_file and 'DIFERENÇA (%)' not in df.columns:
-        st.error("Coluna 'DIFERENÇA (%)' não encontrada no arquivo Excel.")
+                    # Aplicando o estilo CSS para alinhar as colunas à direita
+                    st.markdown(
+                        df_stats.style.set_properties(**{'text-align': 'left'}, subset=['Estatística'])
+                                .set_properties(**{'text-align': 'right'}, subset=['Valor', 'Percentual (%)'])
+                                .to_html(), unsafe_allow_html=True
+                    )
 
 if __name__ == "__main__":
     main()
