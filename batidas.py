@@ -144,12 +144,68 @@ def create_graph(df_no_outliers, tipo_grafico, stats, operadores_str, alimentos_
         plt.setp(ax.get_xticklabels(), rotation=0, ha='center')
     return fig
 
+def create_graph(df_no_outliers, stats, operadores_str, alimentos_str):
+    """
+    Cria o histograma com base nos dados selecionados pelo usuário.
+    Implementa uma escala de cinza nos bins, colore o eixo X por faixas específicas,
+    e destaca o eixo central (0) com uma linha vertical sólida.
+    """
+    fig, ax = plt.subplots(figsize=(12, 6))
+    fig.subplots_adjust(bottom=0.15)
+
+    # Criação do histograma com escala de cinza
+    bins = np.arange(df_no_outliers['DIFERENÇA (%)'].min(), df_no_outliers['DIFERENÇA (%)'].max() + 1, 1)
+    hist, bin_edges = np.histogram(df_no_outliers['DIFERENÇA (%)'], bins=bins)
+    
+    # Criar uma escala de cinza baseada na distância do zero
+    max_distance = max(abs(bin_edges[0]), abs(bin_edges[-1]))
+    colors = [mcolors.to_rgba('gray', alpha=abs(b)/max_distance) for b in bin_edges[:-1]]
+    
+    # Plotar o histograma com cores em escala de cinza
+    ax.bar(bin_edges[:-1], hist, width=1, align='edge', color=colors, edgecolor='black')
+    
+    ax.set_title(f'Histograma de Diferenças Percentuais - Operadores: {operadores_str} - Alimentos: {alimentos_str}')
+    ax.set_xlabel('Diferença (%)')
+    ax.set_ylabel('QTDE DE LOTES BATIDOS')
+    ax.grid(True, linestyle='--', linewidth=0.7, which='both')
+    ax.minorticks_on()
+    ax.grid(True, which='minor', linestyle=':', linewidth=0.5)
+    
+    # Configurar os ticks do eixo X manualmente
+    ax.set_xticks(bin_edges)
+    ax.set_xticklabels([f"{x:.0f}" for x in bin_edges], fontsize=8)
+    
+    # Colorir os rótulos do eixo X baseado nas faixas especificadas
+    for tick in ax.get_xticklabels():
+        tick_value = float(tick.get_text())
+        if tick_value <= -4:
+            tick.set_color('red')
+        elif -3 <= tick_value <= 3:
+            tick.set_color('green')
+        elif tick_value >= 4:
+            tick.set_color('blue')
+        else:
+            tick.set_color('black')  # Para valores entre -4 e -3, e entre 3 e 4
+        
+        # Destacar o eixo central (0)
+        if tick_value == 0:
+            tick.set_color('darkgreen')
+            tick.set_fontweight('bold')
+            tick.set_fontsize(10)
+    
+    # Adicionar uma linha vertical sólida no eixo 0
+    ax.axvline(x=0, color='darkgreen', linewidth=1.5, zorder=5)
+    
+    # Manter os rótulos sem rotação
+    plt.setp(ax.get_xticklabels(), rotation=0, ha='center')
+    return fig
+
 def main():
     """
     Função principal que coordena o fluxo do programa e a interface do usuário.
     """
     # Configuração da página Streamlit
-    st.set_page_config(page_title="Análise de Dados - Boxplot e Histograma", layout="wide")
+    st.set_page_config(page_title="Análise de Dados - Histograma", layout="wide")
 
     # Divisão da interface em duas colunas
     col1, col2 = st.columns([1, 3])
@@ -172,7 +228,6 @@ def main():
             # Widgets de seleção para o usuário
             operadores_selecionados = st.multiselect('Escolha os Operadores:', operadores, default=['Todos'])
             alimentos_selecionados = st.multiselect('Escolha os Alimentos:', alimentos, default=['Todos'])
-            tipo_grafico = st.selectbox('Escolha o Tipo de Gráfico:', ['Boxplot', 'Histograma'])
 
             iniciar_analise = st.button("Gerar")
 
@@ -190,7 +245,7 @@ def main():
                 operadores_str = ', '.join([str(op) for op in operadores_selecionados if op != 'Todos']) if 'Todos' not in operadores_selecionados else 'Todos'
                 alimentos_str = ', '.join([str(al) for al in alimentos_selecionados if al != 'Todos']) if 'Todos' not in alimentos_selecionados else 'Todos'
 
-                fig = create_graph(df_no_outliers_filtered, tipo_grafico, stats, operadores_str, alimentos_str)
+                fig = create_graph(df_no_outliers_filtered, stats, operadores_str, alimentos_str)
                 
                 st.pyplot(fig)
 
