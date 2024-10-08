@@ -38,9 +38,9 @@ def load_and_process_data(uploaded_file):
 
     return df, df_no_outliers, lower_bound, upper_bound
 
-def filter_data(df, df_no_outliers, operadores_selecionados, alimentos_selecionados, start_date, end_date):
+def filter_data(df, df_no_outliers, operadores_selecionados, alimentos_selecionados, dietas_selecionadas, start_date, end_date):
     """
-    Filtra os dados com base nos operadores, alimentos selecionados e no período de datas.
+    Filtra os dados com base nos operadores, alimentos selecionados, dietas selecionadas e no período de datas.
     """
     # Converter a coluna 'DATA' para datetime, se ainda não estiver
     df['DATA'] = pd.to_datetime(df['DATA'], errors='coerce')
@@ -60,6 +60,10 @@ def filter_data(df, df_no_outliers, operadores_selecionados, alimentos_seleciona
     # Filtrar por alimentos, se não for selecionado 'Todos'
     if 'Todos' not in alimentos_selecionados:
         df = df[df['ALIMENTO'].isin(alimentos_selecionados)]
+    
+    # Filtrar por dietas, se não for selecionado 'Todos'
+    if 'Todos' not in dietas_selecionadas:
+        df = df[df['NOME'].isin(dietas_selecionadas)]
     
     # Filtrar o DataFrame sem outliers para corresponder aos filtros aplicados
     df_no_outliers_filtered = df_no_outliers[df_no_outliers.index.isin(df.index)]
@@ -98,7 +102,7 @@ def calculate_statistics(df_operador, df_no_outliers):
         'faixa_acima_9': faixa_acima_9
     }
 
-def create_graph(df_no_outliers, stats, operadores_str, alimentos_str):
+def create_graph(df_no_outliers, stats, operadores_str, alimentos_str, dietas_str):
     """
     Cria o histograma com base nos dados selecionados pelo usuário.
     Implementa uma escala de cinza nos bins, colore o eixo X por faixas específicas,
@@ -119,9 +123,10 @@ def create_graph(df_no_outliers, stats, operadores_str, alimentos_str):
     ax.bar(bin_edges[:-1], hist, width=1, align='edge', color=colors, edgecolor='black')
     
     # Atualização do título para incluir informação sobre outliers
-    ax.set_title(f'Histograma de Diferenças Percentuais (Outliers Removidos)\nOperadores: {operadores_str} - Alimentos: {alimentos_str}')
+    ax.set_title(f'Histograma de Diferenças Percentuais (Outliers Removidos)\nOperadores: {operadores_str} - Alimentos: {alimentos_str} - Dietas: {dietas_str}')
     ax.set_xlabel('Diferença (%)')
     ax.set_ylabel('QTDE DE LOTES BATIDOS')
+    ax.yaxis.get_major_locator().set_params(integer=True)
     ax.grid(True, linestyle='--', linewidth=0.7, which='both')
     ax.minorticks_on()
     ax.grid(True, which='minor', linestyle=':', linewidth=0.5)
@@ -175,16 +180,15 @@ def main():
             df, df_no_outliers, lower_bound, upper_bound = load_and_process_data(uploaded_file)
 
             if df is not None:
-                # Preparar listas de seleção para operadores e alimentos
+                # Preparar listas de seleção para operadores, alimentos e dietas
                 operadores = sorted(df['OPERADOR'].unique().tolist())
                 operadores.insert(0, 'Todos')
                 alimentos = sorted(df['ALIMENTO'].unique().tolist())
                 alimentos.insert(0, 'Todos')
+                dietas = sorted(df['NOME'].unique().tolist())
+                dietas.insert(0, 'Todos')
 
                 # Widgets de seleção para o usuário
-                operadores_selecionados = st.multiselect('Escolha os Operadores:', operadores, default=['Todos'])
-                alimentos_selecionados = st.multiselect('Escolha os Alimentos:', alimentos, default=['Todos'])
-
                 # Widget de seleção de período de datas
                 min_date = df['DATA'].min().date()
                 max_date = df['DATA'].max().date()
@@ -194,6 +198,10 @@ def main():
                     st.warning("Por favor, selecione um intervalo de datas válido.")
                     st.stop()
 
+                alimentos_selecionados = st.multiselect('Escolha os Alimentos:', alimentos, default=['Todos'])
+                dietas_selecionadas = st.multiselect('Escolha as Dietas:', dietas, default=['Todos'])
+                operadores_selecionados = st.multiselect('Escolha os Operadores:', operadores, default=['Todos'])
+
                 iniciar_analise = st.button("Gerar")
 
     with col2:
@@ -201,7 +209,7 @@ def main():
             st.header("Resultados da Análise - confinamento SJudas")
 
             # Filtrar os dados com base nas seleções do usuário
-            df_operador, df_no_outliers_filtered = filter_data(df, df_no_outliers, operadores_selecionados, alimentos_selecionados, start_date, end_date)
+            df_operador, df_no_outliers_filtered = filter_data(df, df_no_outliers, operadores_selecionados, alimentos_selecionados, dietas_selecionadas, start_date, end_date)
 
             if df_operador.empty:
                 st.warning("Não há dados suficientes para gerar a análise.")
@@ -213,8 +221,9 @@ def main():
 
                     operadores_str = ', '.join([str(op) for op in operadores_selecionados if op != 'Todos']) if 'Todos' not in operadores_selecionados else 'Todos'
                     alimentos_str = ', '.join([str(al) for al in alimentos_selecionados if al != 'Todos']) if 'Todos' not in alimentos_selecionados else 'Todos'
+                    dietas_str = ', '.join([str(d) for d in dietas_selecionadas if d != 'Todos']) if 'Todos' not in dietas_selecionadas else 'Todos'
 
-                    fig = create_graph(df_no_outliers_filtered, stats, operadores_str, alimentos_str)
+                    fig = create_graph(df_no_outliers_filtered, stats, operadores_str, alimentos_str, dietas_str)
                     
                     st.pyplot(fig)
 
