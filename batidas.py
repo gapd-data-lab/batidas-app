@@ -85,7 +85,7 @@ def create_graph(df_no_outliers, tipo_grafico, stats, operadores_str, alimentos_
     """
     Cria o gráfico (boxplot ou histograma) com base nos dados e tipo selecionado pelo usuário.
     Para o histograma, implementa uma escala de cinza nos bins, colore o eixo X por faixas específicas,
-    destaca o eixo central (0), e remove a legenda interna.
+    e destaca o eixo central (0) com uma linha vertical sólida.
     """
     fig, ax = plt.subplots(figsize=(12, 6))
     fig.subplots_adjust(bottom=0.15)
@@ -137,15 +137,13 @@ def create_graph(df_no_outliers, tipo_grafico, stats, operadores_str, alimentos_
                 tick.set_fontweight('bold')
                 tick.set_fontsize(10)
         
-        # Adicionar uma linha vertical no eixo 0
-        ax.axvline(x=0, color='darkgreen', linestyle='--', linewidth=1.5)
+        # Adicionar uma linha vertical sólida no eixo 0
+        ax.axvline(x=0, color='darkgreen', linewidth=1.5, zorder=5)
         
         # Manter os rótulos sem rotação
         plt.setp(ax.get_xticklabels(), rotation=0, ha='center')
-
-    # Removida a legenda interna do gráfico
-
     return fig
+
 def main():
     """
     Função principal que coordena o fluxo do programa e a interface do usuário.
@@ -182,32 +180,38 @@ def main():
         if uploaded_file and iniciar_analise:
             st.header("Resultados da Análise - confinamento SJudas")
 
-            # Filtrar dados com base nas seleções do usuário
             df_operador, df_no_outliers_filtered = filter_data(df, df_no_outliers, operadores_selecionados, alimentos_selecionados)
 
             if df_operador.empty:
                 st.warning("Não há dados suficientes para gerar a análise.")
             else:
-                # Calcular estatísticas
                 stats = calculate_statistics(df_operador, df_no_outliers_filtered)
 
-                # Preparar strings para o título do gráfico
                 operadores_str = ', '.join([str(op) for op in operadores_selecionados if op != 'Todos']) if 'Todos' not in operadores_selecionados else 'Todos'
                 alimentos_str = ', '.join([str(al) for al in alimentos_selecionados if al != 'Todos']) if 'Todos' not in alimentos_selecionados else 'Todos'
 
-                # Criar e exibir o gráfico
                 fig = create_graph(df_no_outliers_filtered, tipo_grafico, stats, operadores_str, alimentos_str)
+                
                 st.pyplot(fig)
 
-                # Adicionar botão de download para o gráfico
                 buffer = io.BytesIO()
                 fig.savefig(buffer, format='png')
                 st.download_button(label="Baixar Gráfico", data=buffer, file_name="grafico.png", mime="image/png")
 
-                # Exibir tabela de estatísticas
                 st.write("### Estatísticas das Diferenças Percentuais em Módulo")
                 st.table({
-                    'Estatística': ['Média (Com Outliers)', 'Mediana (Com Outliers)', 'Média (Sem Outliers)', 'Mediana (Sem Outliers)', 'Outliers Removidos', 'Diferença > 3% e <= 5%', 'Diferença > 5% e <= 7%', 'Diferença > 7% e <= 9%', 'Diferença > 9%', 'Total de Pontos'],
+                    'Estatística': [
+                        'Média (Com Outliers)', 
+                        'Mediana (Com Outliers)', 
+                        'Média (Sem Outliers)', 
+                        'Mediana (Sem Outliers)', 
+                        'Outliers Removidos', 
+                        'Diferença > 3% e <= 5%', 
+                        'Diferença > 5% e <= 7%', 
+                        'Diferença > 7% e <= 9%', 
+                        'Diferença > 9%', 
+                        'Total de Pontos'
+                    ],
                     'Valor': [
                         f"{stats['mean_with_outliers']:.2f}",
                         f"{stats['median_with_outliers']:.2f}",
@@ -221,11 +225,11 @@ def main():
                         len(df_operador)
                     ],
                     'Percentual (%)': [
-                        f"{(stats['mean_with_outliers'] / len(df_operador)) * 100:.2f}",
-                        f"{(stats['median_with_outliers'] / len(df_operador)) * 100:.2f}",
-                        f"{(stats['mean_no_outliers'] / len(df_operador)) * 100:.2f}",
-                        f"{(stats['median_no_outliers'] / len(df_operador)) * 100:.2f}",
-                        f"{(stats['num_outliers'] / len(df_operador)) * 100:.2f}",
+                        '',  # Células vazias para as primeiras 5 linhas
+                        '',
+                        '',
+                        '',
+                        '',
                         f"{(stats['faixa_3_5'] / len(df_operador)) * 100:.2f}",
                         f"{(stats['faixa_5_7'] / len(df_operador)) * 100:.2f}",
                         f"{(stats['faixa_7_9'] / len(df_operador)) * 100:.2f}",
