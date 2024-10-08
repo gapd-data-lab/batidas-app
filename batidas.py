@@ -23,36 +23,32 @@ with col1:
         df = pd.read_excel(uploaded_file, skiprows=2)  # `skiprows=2` ignora as duas primeiras linhas
         df = df.iloc[:, 1:]  # Remove a primeira coluna que está vazia
 
-        # Função para encontrar a coluna de interesse
-        def find_column_flexible(df, target_column):
-            target_words = re.findall(r'\w+', target_column.lower())
-            for col in df.columns:
-                col_words = re.findall(r'\w+', col.lower())
-                if all(word in col_words for word in target_words):
-                    return col
-            return None
+        # Tratamento dos dados
+        # Certificar-se de que a coluna 'DIFERENÇA (%)' seja numérica e limpar valores ausentes
+        df['DIFERENÇA (%)'] = pd.to_numeric(df['DIFERENÇA (%)'], errors='coerce').dropna()
 
-        found_column = find_column_flexible(df, "DIFERENÇA (% MÓDULO)")
+        # Remoção de outliers usando o método IQR
+        Q1 = df['DIFERENÇA (%)'].quantile(0.25)
+        Q3 = df['DIFERENÇA (%)'].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        df = df[(df['DIFERENÇA (%)'] >= lower_bound) & (df['DIFERENÇA (%)'] <= upper_bound)]
 
-        if found_column:
-            # Limpeza dos Dados
-            df_clean = df[found_column].dropna()
-            df_clean = pd.to_numeric(df_clean, errors='coerce').dropna()
+        # Criação de Listas para Seleção
+        operadores = df['OPERADOR'].unique().tolist() + ['Todos']
+        alimentos = df['ALIMENTO'].unique().tolist() + ['Todos']
 
-            # Criação de Listas para Seleção
-            operadores = df['OPERADOR'].unique().tolist() + ['Todos']
-            alimentos = df['ALIMENTO'].unique().tolist() + ['Todos']
+        operadores_selecionados = st.multiselect('Escolha os Operadores:', operadores, default=['Todos'])
+        alimentos_selecionados = st.multiselect('Escolha os Alimentos:', alimentos, default=['Todos'])
+        tipo_grafico = st.selectbox('Escolha o Tipo de Gráfico:', ['Boxplot', 'Histograma'])
 
-            operadores_selecionados = st.multiselect('Escolha os Operadores:', operadores, default=['Todos'])
-            alimentos_selecionados = st.multiselect('Escolha os Alimentos:', alimentos, default=['Todos'])
-            tipo_grafico = st.selectbox('Escolha o Tipo de Gráfico:', ['Boxplot', 'Histograma'])
-
-            # Botão para iniciar a análise
-            iniciar_analise = st.button("Iniciar Análise")
+        # Botão para iniciar a análise
+        iniciar_analise = st.button("Iniciar Análise")
 
 # Coluna para exibir os gráficos e resultados
 with col2:
-    if uploaded_file and found_column and iniciar_analise:
+    if uploaded_file and iniciar_analise:
         st.header("Resultados da Análise")
 
         # Filtragem de Dados
@@ -64,36 +60,19 @@ with col2:
         if 'Todos' not in alimentos_selecionados:
             df_operador = df_operador[df_operador['ALIMENTO'].isin(alimentos_selecionados)]
 
-        df_operador_clean = df_operador[found_column].dropna()
-        df_operador_clean = pd.to_numeric(df_operador_clean, errors='coerce').dropna()
-
-        # Identificação e Remoção de Outliers
-        Q1 = df_operador_clean.quantile(0.25)
-        Q3 = df_operador_clean.quantile(0.75)
-        IQR = Q3 - Q1
-        lower_bound = Q1 - 1.5 * IQR
-        upper_bound = Q3 + 1.5 * IQR
-        df_operador_no_outliers = df_operador_clean[(df_operador_clean >= lower_bound) & (df_operador_clean <= upper_bound)]
-
-        # Cálculo das Estatísticas
-        mean_with_outliers = df_operador_clean.mean()
-        median_with_outliers = df_operador_clean.median()
-        mean_no_outliers = df_operador_no_outliers.mean()
-        median_no_outliers = df_operador_no_outliers.median()
-        num_outliers = len(df_operador_clean) - len(df_operador_no_outliers)
-        total_points_with_outliers = len(df_operador_clean)
-        total_points_no_outliers = len(df_operador_no_outliers)
-
         # Verificação se há dados após a filtragem
-        if len(df_operador_no_outliers) == 0:
-            st.warning("Não há dados suficientes após a filtragem para gerar o gráfico.")
+        if df_operador.empty:
+            st.warning("Não há dados suficientes para gerar a análise.")
         else:
-            # Mostrar algumas estatísticas básicas dos dados antes e depois da remoção dos outliers
-            st.write("### Estatísticas dos Dados")
+            # Cálculo das Estatísticas das Diferenças Percentuais em Módulo
+            mean_diff = df_operador['DIFERENÇA (%)'].abs().mean()
+            median_diff = df_operador['DIFERENÇA (%)'].abs().median()
+
+            # Mostrar algumas estatísticas básicas dos dados
+            st.write("### Estatísticas das Diferenças Percentuais em Módulo")
             st.table({
-                'Estatística': ['Média', 'Mediana', 'Total de Pontos', 'Outliers Removidos'],
-                'Com Outliers': [f"{mean_with_outliers:.2f}", f"{median_with_outliers:.2f}", total_points_with_outliers, '-'],
-                'Sem Outliers': [f"{mean_no_outliers:.2f}", f"{median_no_outliers:.2f}", total_points_no_outliers, num_outliers]
+                'Estatística': ['Média', 'Mediana'],
+                'Valor': [f"{mean_diff:.2f}", f"{median_diff:.2f}"]
             })
 
             # Criação do Gráfico
@@ -104,15 +83,15 @@ with col2:
             alimentos_str = ', '.join([str(al) for al in alimentos_selecionados if al != 'Todos']) if 'Todos' not in alimentos_selecionados else 'Todos'
 
             if tipo_grafico == 'Boxplot':
-                ax.boxplot(df_operador_no_outliers, vert=False, showmeans=True, meanline=True)
-                ax.set_title(f'Boxplot de "{found_column}" - Operadores: {operadores_str} - Alimentos: {alimentos_str}')
-                ax.set_xlabel(found_column)
+                ax.boxplot(df_operador['DIFERENÇA (%)'], vert=False, showmeans=True, meanline=True)
+                ax.set_title(f'Boxplot de Diferenças Percentuais em Módulo - Operadores: {operadores_str} - Alimentos: {alimentos_str}')
+                ax.set_xlabel('Diferença (%)')
                 ax.grid(True)
 
             elif tipo_grafico == 'Histograma':
-                ax.hist(df_operador_no_outliers, bins=15, edgecolor='black', alpha=0.7)
-                ax.set_title(f'Histograma de "{found_column}" - Operadores: {operadores_str} - Alimentos: {alimentos_str}')
-                ax.set_xlabel(found_column)
+                ax.hist(df_operador['DIFERENÇA (%)'], bins=15, edgecolor='black', alpha=0.7)
+                ax.set_title(f'Histograma de Diferenças Percentuais em Módulo - Operadores: {operadores_str} - Alimentos: {alimentos_str}')
+                ax.set_xlabel('Diferença (%)')
                 ax.set_ylabel('Frequência')
                 ax.grid(True)
 
@@ -124,5 +103,5 @@ with col2:
             fig.savefig(buffer, format='png')
             st.download_button(label="Baixar Gráfico", data=buffer, file_name="grafico.png", mime="image/png")
 
-if uploaded_file and not found_column:
-    st.error("Coluna 'DIFERENÇA (% MÓDULO)' não encontrada no arquivo Excel.")
+if uploaded_file and 'DIFERENÇA (%)' not in df.columns:
+    st.error("Coluna 'DIFERENÇA (%)' não encontrada no arquivo Excel.")
