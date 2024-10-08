@@ -68,8 +68,6 @@ O código é dividido em três partes principais:
   - Caso a coluna "DIFERENÇA (%)" não seja encontrada, mostre uma mensagem de erro clara usando `st.error()`.
   - Certifique-se de tratar valores ausentes e conversões de tipos para evitar falhas durante o processamento dos dados.
 
-### Resumo
-
 ### Comandos para Commit e Push no GitHub
 
 ```bash
