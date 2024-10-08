@@ -78,4 +78,7 @@ git add batidas.py "prompt de instrução para o app batidas.md" "requirements.t
 git commit -m "Versão final do app batidas - atualizações de 08 de outubro de 2024, incluindo prompt de instrução"
 git push origin main
 ```
-Este prompt visa fornecer todas as orientações necessárias para que outra LLM compreenda e reproduza o programa de análise de dados, respeitando a seleção dos usuários, gerando visualizações consistentes e realizando cálculos precisos com e sem outliers. Cada etapa do desenvolvimento foi explicada de forma detalhada para garantir que o código seja replicável e ajustável conforme as necessidades de diferentes usuários.
+### Comando para ativar o ambiente virtual
+
+```
+source venv/bin/activate
