@@ -161,9 +161,6 @@ def create_graph(df_no_outliers, stats, operadores_str, alimentos_str, dietas_st
     return fig
 
 def main():
-    """
-    Função principal que coordena o fluxo do programa e a interface do usuário.
-    """
     # Configuração da página Streamlit
     st.set_page_config(page_title="Análise de Dados - Histograma", layout="wide")
 
@@ -189,7 +186,6 @@ def main():
                 dietas.insert(0, 'Todos')
 
                 # Widgets de seleção para o usuário
-                # Widget de seleção de período de datas
                 min_date = df['DATA'].min().date()
                 max_date = df['DATA'].max().date()
                 try:
@@ -201,6 +197,9 @@ def main():
                 alimentos_selecionados = st.multiselect('Escolha os Alimentos:', alimentos, default=['Todos'])
                 dietas_selecionadas = st.multiselect('Escolha as Dietas:', dietas, default=['Todos'])
                 operadores_selecionados = st.multiselect('Escolha os Operadores:', operadores, default=['Todos'])
+
+                # Checkbox para remover outliers do histograma de médias das diferenças percentuais
+                remover_outliers = st.checkbox("Remover Outliers do Histograma de Médias de Diferenças Percentuais")
 
                 iniciar_analise = st.button("Gerar")
 
@@ -214,74 +213,150 @@ def main():
             if df_operador.empty:
                 st.warning("Não há dados suficientes para gerar a análise.")
             else:
-                if df_no_outliers_filtered.empty:
-                    st.warning("Não há dados suficientes sem outliers para gerar a análise.")
+                # Calcular a média das diferenças percentuais para cada batida
+                mean_diff_per_batida = df_operador.groupby('COD. BATIDA')['DIFERENÇA (%)'].mean().reset_index()
+
+                # Remover outliers, se necessário
+                if remover_outliers:
+                    Q1 = mean_diff_per_batida['DIFERENÇA (%)'].quantile(0.25)
+                    Q3 = mean_diff_per_batida['DIFERENÇA (%)'].quantile(0.75)
+                    IQR = Q3 - Q1
+                    lower_bound = Q1 - 1.5 * IQR
+                    upper_bound = Q3 + 1.5 * IQR
+                    mean_diff_filtered = mean_diff_per_batida[(mean_diff_per_batida['DIFERENÇA (%)'] >= lower_bound) & (mean_diff_per_batida['DIFERENÇA (%)'] <= upper_bound)]
                 else:
-                    stats = calculate_statistics(df_operador, df_no_outliers_filtered)
+                    mean_diff_filtered = mean_diff_per_batida
 
-                    operadores_str = ', '.join([str(op) for op in operadores_selecionados if op != 'Todos']) if 'Todos' not in operadores_selecionados else 'Todos'
-                    alimentos_str = ', '.join([str(al) for al in alimentos_selecionados if al != 'Todos']) if 'Todos' not in alimentos_selecionados else 'Todos'
-                    dietas_str = ', '.join([str(d) for d in dietas_selecionadas if d != 'Todos']) if 'Todos' not in dietas_selecionadas else 'Todos'
+                # Gerar o histograma da média das diferenças percentuais com escala de cinza
+                fig, ax = plt.subplots(figsize=(10, 6))
+                bins = np.linspace(mean_diff_filtered['DIFERENÇA (%)'].min(), mean_diff_filtered['DIFERENÇA (%)'].max(), 20)
+                hist, bin_edges = np.histogram(mean_diff_filtered['DIFERENÇA (%)'], bins=bins)
 
-                    fig = create_graph(df_no_outliers_filtered, stats, operadores_str, alimentos_str, dietas_str)
-                    
-                    st.pyplot(fig)
+                # Definir cores baseadas na distância ao valor 0 (escala de cinza correta)
+                max_distance = max(abs(bin_edges[0]), abs(bin_edges[-1]))
+                colors = [mcolors.to_rgba('gray', alpha=(abs(b) / max_distance)) for b in bin_edges[:-1]]
 
-                    # Adicionando nota explicativa sobre outliers
-                    st.info(f"Nota: O histograma acima não inclui outliers. Foram removidos {stats['num_outliers']} outliers para esta análise.")
+                # Plotar o histograma com a escala de cinza corrigida
+                ax.bar(bin_edges[:-1], hist, width=np.diff(bin_edges), align='edge', color=colors, edgecolor='black')
+                ax.set_xlabel('Média da Diferença (%)')
+                ax.set_ylabel('Frequência')
+                ax.set_title('Histograma da Média da Diferença Percentual de Todas as Batidas')
 
-                    buffer = io.BytesIO()
-                    fig.savefig(buffer, format='png')
-                    st.download_button(label="Baixar Gráfico", data=buffer, file_name="grafico.png", mime="image/png")
+                # Inserir o novo título do gráfico
+                if remover_outliers:
+                    ax.set_title('Distribuição da Média da Diferença Percentual das Batidas (Sem Outliers) - Confinamento SJudas', fontsize=14)
+                else:
+                    ax.set_title('Distribuição da Média da Diferença Percentual das Batidas (Com Outliers) - Confinamento SJudas', fontsize=14)
 
-                    st.write("### Estatísticas das Diferenças Percentuais em Módulo")
-                    
-                    # Criando o DataFrame com os dados da tabela
-                    df_stats = pd.DataFrame({
-                        'Estatística': [
-                            'Média (Com Outliers - valor em %)', 
-                            'Mediana (Com Outliers -  valor em %)', 
-                            'Média (Sem Outliers - valor em %)', 
-                            'Mediana (Sem Outliers - valor em %)', 
-                            'Outliers Removidos', 
-                            'Diferença > 3% e <= 5%', 
-                            'Diferença > 5% e <= 7%', 
-                            'Diferença > 7% e <= 9%', 
-                            'Diferença > 9%', 
-                            'Total de Pontos'
-                        ],
-                        'Valor': [
-                            f"{stats['mean_with_outliers']:.2f}",
-                            f"{stats['median_with_outliers']:.2f}",
-                            f"{stats['mean_no_outliers']:.2f}",
-                            f"{stats['median_no_outliers']:.2f}",
-                            f"{stats['num_outliers']}",
-                            f"{stats['faixa_3_5']}",
-                            f"{stats['faixa_5_7']}",
-                            f"{stats['faixa_7_9']}",
-                            f"{stats['faixa_acima_9']}",
-                            f"{len(df_operador)}"
-                        ],
-                        'Percentual (%)': [
-                            '',
-                            '',
-                            '',
-                            '',
-                            '',
-                            f"{(stats['faixa_3_5'] / len(df_operador)) * 100:.2f}",
-                            f"{(stats['faixa_5_7'] / len(df_operador)) * 100:.2f}",
-                            f"{(stats['faixa_7_9'] / len(df_operador)) * 100:.2f}",
-                            f"{(stats['faixa_acima_9'] / len(df_operador)) * 100:.2f}",
-                            "100.00"
-                        ]
-                    })
+                # Adicionar uma linha vertical verde no valor 0 do eixo X
+                ax.axvline(x=0, color='green', linestyle='-', linewidth=2, label='Centro (0)')
+                
+                # Configurar as grades principais e secundárias
+                ax.grid(axis='y', linestyle='--', linewidth=0.7, which='major')
+                ax.grid(axis='y', linestyle=':', linewidth=0.5, which='minor')
+                ax.minorticks_on()  # Ativar os ticks menores para uma grade mais detalhada
 
-                    # Aplicando o estilo CSS para alinhar as colunas à direita
-                    st.markdown(
-                        df_stats.style.set_properties(**{'text-align': 'left'}, subset=['Estatística'])
-                                .set_properties(**{'text-align': 'right'}, subset=['Valor', 'Percentual (%)'])
-                                .to_html(), unsafe_allow_html=True
-                    )
+                # Definir os ticks do eixo X, incluindo números ímpares
+                min_bin, max_bin = int(np.floor(mean_diff_filtered['DIFERENÇA (%)'].min())), int(np.ceil(mean_diff_filtered['DIFERENÇA (%)'].max()))
+                xticks = list(range(min_bin, max_bin + 1))  # Incluir todos os valores inteiros no intervalo
+
+                # Aplicar os ticks ao eixo X
+                ax.set_xticks(xticks)
+
+                # Customizar os rótulos do eixo X
+                for label in ax.get_xticklabels():
+                    try:
+                        tick_value = float(label.get_text().replace('−', '-'))  # Corrigir representação do sinal negativo
+                        # Aplicar cor baseada no valor do tick
+                        if tick_value <= -4:
+                            label.set_color('red')
+                        elif -3 <= tick_value <= 3:
+                            label.set_color('green')
+                        elif tick_value >= 4:
+                            label.set_color('blue')
+
+                        # Se o valor for ímpar, aumentar a fonte, caso contrário, diminuir a fonte
+                        if int(tick_value) % 2 != 0:
+                            label.set_fontsize(12)  # Fonte maior para números ímpares
+                        else:
+                            label.set_fontsize(8)   # Fonte menor para números pares
+                    except ValueError:
+                        # Caso haja um rótulo que não seja numérico, ignorar (ex. vazio)
+                        continue
+
+                st.pyplot(fig)
+
+                # Calcular estatísticas principais
+                num_batidas = len(mean_diff_per_batida)
+                media_com_outliers = mean_diff_per_batida['DIFERENÇA (%)'].mean()
+                mediana_com_outliers = mean_diff_per_batida['DIFERENÇA (%)'].median()
+                num_batidas_sem_outliers = len(mean_diff_filtered)
+                media_sem_outliers = mean_diff_filtered['DIFERENÇA (%)'].mean()
+                mediana_sem_outliers = mean_diff_filtered['DIFERENÇA (%)'].median()
+
+                # Contagem de batidas em diferentes faixas de diferença
+                faixa_3_5 = mean_diff_per_batida['DIFERENÇA (%)'].abs().between(3, 5).sum()
+                faixa_5_7 = mean_diff_per_batida['DIFERENÇA (%)'].abs().between(5, 7).sum()
+                faixa_acima_7 = mean_diff_per_batida['DIFERENÇA (%)'].abs().gt(7).sum()
+
+                # Percentual de batidas em cada faixa
+                percentual_3_5 = (faixa_3_5 / num_batidas) * 100
+                percentual_5_7 = (faixa_5_7 / num_batidas) * 100
+                percentual_acima_7 = (faixa_acima_7 / num_batidas) * 100
+
+                # Criar DataFrame para a tabela de estatísticas
+                stats_data = {
+                    'Estatística': [
+                        'Número de Batidas', 
+                        'Média (%)', 
+                        'Mediana (%)',
+                        'Diferença entre 3% e 5%',
+                        'Diferença entre 5% e 7%',
+                        'Diferença acima de 7%'
+                    ],
+                    'Com Outliers': [
+                        num_batidas, 
+                        f"{media_com_outliers:.2f}", 
+                        f"{mediana_com_outliers:.2f}",
+                        faixa_3_5,
+                        faixa_5_7,
+                        faixa_acima_7
+                    ],
+                    'Percentual (%)': [
+                        '-', 
+                        '-', 
+                        '-',
+                        f"{percentual_3_5:.2f}%",
+                        f"{percentual_5_7:.2f}%",
+                        f"{percentual_acima_7:.2f}%"
+                    ],
+                    'Sem Outliers': [
+                        num_batidas_sem_outliers, 
+                        f"{media_sem_outliers:.2f}", 
+                        f"{mediana_sem_outliers:.2f}",
+                        '-',  # Não calculado para sem outliers
+                        '-',  # Não calculado para sem outliers
+                        '-'   # Não calculado para sem outliers
+                    ]
+                }
+                stats_df = pd.DataFrame(stats_data)
+
+                # Estilizar a tabela para melhor visualização
+                styled_stats_df = stats_df.style.set_table_styles([
+                    {'selector': 'th', 'props': [('font-size', '14px'), ('text-align', 'center')]},
+                    {'selector': 'td', 'props': [('font-size', '12px'), ('text-align', 'right'), ('padding', '8px')]},
+                    {'selector': 'caption', 'props': [('caption-side', 'bottom')]},
+                ]).set_properties(**{'width': '200px'}, subset=['Estatística']).set_properties(
+                    **{'width': '150px'}, subset=['Com Outliers', 'Sem Outliers', 'Percentual (%)']
+                )
+
+                # Exibir a tabela de estatísticas estilizada
+                st.write("### Estatísticas Principais das Diferenças Percentuais")
+                st.write(styled_stats_df.to_html(), unsafe_allow_html=True)
+
+                # Adicionando nota explicativa sobre outliers, se necessário
+                if remover_outliers:
+                    st.info(f"Nota: Outliers foram removidos do histograma.")
 
 if __name__ == "__main__":
     main()
