@@ -25,10 +25,65 @@ def load_and_process_data(uploaded_file):
     
     return df
 
+def calculate_statistics_with_without_outliers(df, column):
+    data = df[column]
+    
+    count = len(data)
+    mean = data.mean()
+    median = data.median()
+    
+    Q1 = data.quantile(0.25)
+    Q3 = data.quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    
+    faixa_3_5 = 0
+    faixa_5_7 = 0
+    faixa_acima_7 = 0
+    sum_without_outliers = 0
+    count_without_outliers = 0
+    
+    for value in data:
+        abs_value = abs(value)
+        
+        if 3 <= abs_value < 5:
+            faixa_3_5 += 1
+        elif 5 <= abs_value < 7:
+            faixa_5_7 += 1
+        elif abs_value >= 7:
+            faixa_acima_7 += 1
+        
+        if lower_bound <= value <= upper_bound:
+            sum_without_outliers += value
+            count_without_outliers += 1
+    
+    mean_without_outliers = sum_without_outliers / count_without_outliers if count_without_outliers > 0 else 0
+    
+    percentual_3_5 = (faixa_3_5 / count) * 100
+    percentual_5_7 = (faixa_5_7 / count) * 100
+    percentual_acima_7 = (faixa_acima_7 / count) * 100
+    
+    return {
+        'com_outliers': {
+            'num_batidas': count,
+            'media': mean,
+            'mediana': median,
+            'faixa_3_5': faixa_3_5,
+            'faixa_5_7': faixa_5_7,
+            'faixa_acima_7': faixa_acima_7,
+            'percentual_3_5': percentual_3_5,
+            'percentual_5_7': percentual_5_7,
+            'percentual_acima_7': percentual_acima_7
+        },
+        'sem_outliers': {
+            'num_batidas': count_without_outliers,
+            'media': mean_without_outliers,
+            'mediana': median
+        }
+    }
+
 def remove_outliers_from_df(df, column):
-    """
-    Remove outliers usando o método do Intervalo Interquartil (IQR).
-    """
     Q1 = df[column].quantile(0.25)
     Q3 = df[column].quantile(0.75)
     IQR = Q3 - Q1
@@ -54,24 +109,6 @@ def filter_data(df, operadores, alimentos, dietas, start_date, end_date):
         df = df[df['NOME'].isin(dietas)]
     
     return df
-
-def calculate_statistics(df):
-    """
-    Calcula estatísticas relevantes dos dados.
-    """
-    stats = {
-        'num_batidas': len(df),
-        'media': df['DIFERENÇA (%)'].mean(),
-        'mediana': df['DIFERENÇA (%)'].median(),
-        'faixa_3_5': df['DIFERENÇA (%)'].abs().between(3, 5).sum(),
-        'faixa_5_7': df['DIFERENÇA (%)'].abs().between(5, 7).sum(),
-        'faixa_acima_7': df['DIFERENÇA (%)'].abs().gt(7).sum()
-    }
-    stats['percentual_3_5'] = (stats['faixa_3_5'] / stats['num_batidas']) * 100
-    stats['percentual_5_7'] = (stats['faixa_5_7'] / stats['num_batidas']) * 100
-    stats['percentual_acima_7'] = (stats['faixa_acima_7'] / stats['num_batidas']) * 100
-    
-    return stats
 
 def create_color_scale(values):
     """
@@ -233,15 +270,17 @@ def main():
                 mean_diff_per_batida = df_filtered.groupby('COD. BATIDA')['DIFERENÇA (%)'].mean().reset_index()
                 
                 fig = create_histogram(mean_diff_per_batida, 
-                                       f"Distribuição da Média da Diferença Percentual das Batidas ({'Sem' if remover_outliers else 'Com'} Outliers) - Confinamento",
-                                       remover_outliers)
+                                    f"Distribuição da Média da Diferença Percentual das Batidas ({'Sem' if remover_outliers else 'Com'} Outliers) - Confinamento",
+                                    remover_outliers)
                 st.pyplot(fig)
                 
                 # Adicionar opção para salvar o histograma
                 st.markdown(save_histogram_as_image(fig), unsafe_allow_html=True)
                 
-                stats_com_outliers = calculate_statistics(mean_diff_per_batida)
-                stats_sem_outliers = calculate_statistics(remove_outliers_from_df(mean_diff_per_batida, 'DIFERENÇA (%)'))
+                # Novo código para calcular estatísticas
+                stats = calculate_statistics_with_without_outliers(mean_diff_per_batida, 'DIFERENÇA (%)')
+                stats_com_outliers = stats['com_outliers']
+                stats_sem_outliers = stats['sem_outliers']
                 
                 # Criar DataFrame para a tabela de estatísticas
                 stats_data = {
