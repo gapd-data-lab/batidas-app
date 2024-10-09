@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.ticker import MaxNLocator, FuncFormatter
 import datetime
+import io
+import base64
 
 def load_and_process_data(uploaded_file):
     """
@@ -170,6 +172,26 @@ def create_histogram(df, title, remove_outliers=False):
     
     return fig
 
+def save_histogram_as_image(fig):
+    """
+    Salva o histograma como uma imagem PNG e retorna um link para download.
+    """
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+    buf.seek(0)
+    b64 = base64.b64encode(buf.getvalue()).decode()
+    href = f'<a href="data:image/png;base64,{b64}" download="histograma.png">Download do Histograma (PNG)</a>'
+    return href
+
+def save_statistics_as_csv(stats_df):
+    """
+    Salva as estatísticas como um arquivo CSV e retorna um link para download.
+    """
+    csv = stats_df.to_csv(index=False)
+    b64 = base64.b64encode(csv.encode()).decode()
+    href = f'<a href="data:file/csv;base64,{b64}" download="estatisticas.csv">Download das Estatísticas (CSV)</a>'
+    return href
+
 def main():
     st.set_page_config(page_title="Análise de Dados - Histograma", layout="wide")
     
@@ -214,6 +236,9 @@ def main():
                                        f"Distribuição da Média da Diferença Percentual das Batidas ({'Sem' if remover_outliers else 'Com'} Outliers) - Confinamento SJudas",
                                        remover_outliers)
                 st.pyplot(fig)
+                
+                # Adicionar opção para salvar o histograma
+                st.markdown(save_histogram_as_image(fig), unsafe_allow_html=True)
                 
                 stats_com_outliers = calculate_statistics(mean_diff_per_batida)
                 stats_sem_outliers = calculate_statistics(remove_outliers_from_df(mean_diff_per_batida, 'DIFERENÇA (%)'))
@@ -267,6 +292,9 @@ def main():
                 # Exibir a tabela de estatísticas estilizada
                 st.write("### Estatísticas Principais das Diferenças Percentuais")
                 st.write(styled_stats_df.to_html(), unsafe_allow_html=True)
+                
+                # Adicionar opção para salvar as estatísticas
+                st.markdown(save_statistics_as_csv(stats_df), unsafe_allow_html=True)
                 
                 if remover_outliers:
                     st.info(f"Nota: Outliers foram removidos do histograma.")
