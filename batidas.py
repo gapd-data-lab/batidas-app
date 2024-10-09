@@ -7,6 +7,7 @@ from matplotlib.ticker import MaxNLocator, FuncFormatter
 import datetime
 import io
 import base64
+import pytz
 
 def load_and_process_data(uploaded_file):
     """
@@ -204,11 +205,17 @@ def create_histogram(df, title, start_date, end_date, remove_outliers=False):
     ax.text(0.01, 0.99, f"Dados fora dos limites: {outside_count} ({outside_percent:.2f}%)",
             transform=ax.transAxes, verticalalignment='top', fontsize=10)
     
+    # Configurar o fuso horário de Brasília
+    brasilia_tz = pytz.timezone('America/Sao_Paulo')
+    
+    # Obter a data e hora atual em Brasília
+    now_brasilia = datetime.datetime.now(brasilia_tz)
+    
     # Adicionar informações no rodapé
     plt.figtext(0.5, 0.01, f"Período analisado: {start_date.strftime('%d/%m/%Y')} a {end_date.strftime('%d/%m/%Y')}", 
                 ha="center", fontsize=10)
     plt.figtext(0.01, 0.01, f"Total de batidas: {len(df)}", fontsize=10)
-    plt.figtext(0.99, 0.01, f"Gerado em: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}", 
+    plt.figtext(0.99, 0.01, f"Gerado em: {now_brasilia.strftime('%d/%m/%Y %H:%M')} (Horário de Brasília)", 
                 ha="right", fontsize=10)
     
     # Ajustar o layout para acomodar o rodapé
