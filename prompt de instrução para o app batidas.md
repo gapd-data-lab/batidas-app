@@ -1,15 +1,13 @@
-**Prompt de Instrução Completo para Desenvolvimento do Programa de Análise de Dados em Streamlit**
-
 ### Objetivo
 Este prompt instrui sobre o processo de elaboração do programa de análise de dados em Streamlit, que visa gerar gráficos (boxplot e histograma) para dados de batidas de lotes de confinamento. Deve-se compreender a estrutura do programa, seus parâmetros necessários e a lógica de funcionamento, garantindo que todas as escolhas do usuário sejam respeitadas durante a análise e exibição dos resultados.
 
 ### Estrutura do Programa
-O programa é desenvolvido em Python utilizando o framework Streamlit para criar uma interface gráfica intuitiva e interativa para o usuário. O objetivo é realizar análises estatísticas sobre um arquivo Excel (.xlsx) contendo dados de batidas de rações de lotes de confinamento, gerando boxplots e histogramas a partir das diferenças percentuais encontradas nas misturas de ração.
+O programa será desenvolvido em Python utilizando o framework Streamlit para criar uma interface gráfica intuitiva e interativa para o usuário. O objetivo é realizar análises estatísticas sobre um arquivo Excel (.xlsx) contendo dados de batidas de rações de lotes de confinamento, gerando histogramas a partir das diferenças percentuais encontradas nas misturas de ração.
 
 O código é dividido em três partes principais:
 1. **Upload e Configurações do Arquivo**: Área onde o usuário faz o upload do arquivo Excel, define parâmetros de seleção, como operadores e tipos de alimentos, e seleciona o tipo de gráfico.
 2. **Processamento dos Dados**: Parte que trata o arquivo, faz a limpeza dos dados, lida com outliers e calcula as estatísticas necessárias para a análise.
-3. **Visualização dos Resultados**: Gera o gráfico (boxplot ou histograma) e uma tabela com as estatísticas dos dados, considerando as escolhas do usuário, exibindo o gráfico e a tabela na ordem correta.
+3. **Visualização dos Resultados**: Gera o gráfico (histograma) e uma tabela com as estatísticas dos dados, considerando as escolhas do usuário, exibindo o gráfico e a tabela na ordem correta.
 
 ### Passos e Orientações
 
@@ -19,7 +17,6 @@ O código é dividido em três partes principais:
 - **Upload do Arquivo**: Utilize `st.file_uploader()` para permitir o upload do arquivo Excel.
 - **Seleção de Parâmetros**: Utilize `st.multiselect()` para selecionar um ou mais operadores e tipos de alimentos.
   - Ordene os operadores e alimentos em ordem alfabética, com a opção "Todos" sempre no início.
-  - Permita ao usuário escolher o tipo de gráfico (`Boxplot` ou `Histograma`).
 - **Botão Gerar**: Crie um botão "Gerar" que, quando pressionado, inicia o processamento dos dados e a geração dos gráficos.
 
 #### 2. Processamento e Limpeza dos Dados
@@ -42,8 +39,7 @@ O código é dividido em três partes principais:
 
 #### 4. Visualização dos Resultados
 - **Criação dos Gráficos**:
-  - Crie um gráfico de acordo com o tipo selecionado pelo usuário:
-    - **Boxplot**: Utilize `ax.boxplot()` com as configurações para exibir a média e a mediana.
+  - Crie um gráfico de acordo com o tipo desejado pelo usuário:
     - **Histograma**: Utilize `ax.bar()` para plotar um histograma em escala de cinza simétrica, variando do branco ao cinza mais escuro conforme a magnitude da diferença.
   - Para o eixo X do histograma, utilize cores para diferenciar as diferenças positivas e negativas.
 - **Renderização no Streamlit**:
