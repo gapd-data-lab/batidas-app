@@ -199,7 +199,7 @@ def main():
                 operadores_selecionados = st.multiselect('Escolha os Operadores:', operadores, default=['Todos'])
 
                 # Checkbox para remover outliers do histograma de médias das diferenças percentuais
-                remover_outliers = st.checkbox("Remover Outliers do Histograma de Médias de Diferenças Percentuais")
+                remover_outliers = st.checkbox("Remover outliers do histograma")
 
                 iniciar_analise = st.button("Gerar")
 
