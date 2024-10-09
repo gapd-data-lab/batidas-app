@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from matplotlib.ticker import MaxNLocator, FuncFormatter
 import datetime
 
 def load_and_process_data(uploaded_file):
@@ -81,42 +82,91 @@ def create_histogram(df, title, remove_outliers=False):
     """
     Cria o histograma com base nos dados fornecidos.
     """
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(12, 6))
     
     if remove_outliers:
         df = remove_outliers_from_df(df, 'DIFERENÇA (%)')
     
-    bins = np.linspace(df['DIFERENÇA (%)'].min(), df['DIFERENÇA (%)'].max(), 20)
-    hist, bin_edges = np.histogram(df['DIFERENÇA (%)'], bins=bins)
+    # Calcular os limites para o eixo X
+    data = df['DIFERENÇA (%)']
+    q1, q3 = np.percentile(data, [25, 75])
+    iqr = q3 - q1
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
     
-    colors = create_color_scale(bin_edges[:-1])
+    # Ajustar os limites para o número inteiro mais próximo
+    lower_bound = np.floor(lower_bound)
+    upper_bound = np.ceil(upper_bound)
     
-    ax.bar(bin_edges[:-1], hist, width=np.diff(bin_edges), align='edge', color=colors, edgecolor='black')
+    # Usar bins adaptativos
+    bin_width = 2 * iqr * (len(data) ** (-1/3))  # Regra de Freedman-Diaconis
+    n_bins = int((upper_bound - lower_bound) / bin_width)
+    n_bins = min(n_bins, 100)  # Limitar o número máximo de bins
+    
+    # Criar o histograma
+    n, bins, patches = ax.hist(data, bins=n_bins, range=(lower_bound, upper_bound), edgecolor='black')
+    
+    # Colorir as barras
+    colors = create_color_scale(bins[:-1])
+    for patch, color in zip(patches, colors):
+        patch.set_facecolor(color)
+    
     ax.set_xlabel('Diferença (%)')
     ax.set_ylabel('Frequência')
     ax.set_title(title)
     
+    # Adicionar linha vertical no zero
     ax.axvline(x=0, color='green', linestyle='-', linewidth=2, label='Centro (0)')
-    ax.grid(axis='y', linestyle='--', linewidth=0.7, which='major')
-    ax.grid(axis='y', linestyle=':', linewidth=0.5, which='minor')
-    ax.minorticks_on()
     
-    xticks = range(int(np.floor(df['DIFERENÇA (%)'].min())), int(np.ceil(df['DIFERENÇA (%)'].max())) + 1)
-    ax.set_xticks(xticks)
+    # Configurar grid
+    ax.grid(axis='y', linestyle='--', linewidth=0.7)
+    ax.set_axisbelow(True)  # Colocar o grid atrás das barras
     
+    # Configurar ticks inteiros no eixo X
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=20, prune='both'))
+    
+    # Função para formatar os rótulos como inteiros
+    def format_fn(tick_val, tick_pos):
+        return int(tick_val)
+    
+    ax.xaxis.set_major_formatter(FuncFormatter(format_fn))
+    
+    # Colorir e ajustar os rótulos do eixo X
     for label in ax.get_xticklabels():
         try:
-            tick_value = float(label.get_text().replace('−', '-'))
+            tick_value = int(float(label.get_text().replace('−', '-')))
             if tick_value <= -4:
                 label.set_color('red')
             elif -3 <= tick_value <= 3:
                 label.set_color('green')
             elif tick_value >= 4:
                 label.set_color('blue')
+            else:
+                label.set_color('black')
             
-            label.set_fontsize(12 if int(tick_value) % 2 != 0 else 8)
+            # Destacar o eixo central (0)
+            if tick_value == 0:
+                label.set_color('darkgreen')
+                label.set_fontweight('bold')
+                label.set_fontsize(10)
+            else:
+                # Ajustar o tamanho da fonte para números pares e ímpares
+                label.set_fontsize(12 if tick_value % 2 != 0 else 8)
+            
         except ValueError:
             continue
+    
+    # Adicionar informações sobre dados fora dos limites
+    total_count = len(data)
+    inside_count = ((data >= lower_bound) & (data <= upper_bound)).sum()
+    outside_count = total_count - inside_count
+    outside_percent = (outside_count / total_count) * 100
+    
+    ax.text(0.01, 0.99, f"Dados fora dos limites: {outside_count} ({outside_percent:.2f}%)",
+            transform=ax.transAxes, verticalalignment='top', fontsize=10)
+    
+    # Ajustar o layout para evitar sobreposição de rótulos
+    plt.tight_layout()
     
     return fig
 
