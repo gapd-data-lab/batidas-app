@@ -301,3 +301,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# programa escrito com auxilio das LLM OpenAi GTP 4o e Anthropic Claude 3.5 sonnet
+# data: 09 de outubro de 2024
