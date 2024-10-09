@@ -117,11 +117,11 @@ def create_color_scale(values):
     max_distance = max(abs(values))
     return [mcolors.to_rgba('gray', alpha=abs(v)/max_distance) for v in values]
 
-def create_histogram(df, title, remove_outliers=False):
+def create_histogram(df, title, start_date, end_date, remove_outliers=False):
     """
-    Cria o histograma com base nos dados fornecidos.
+    Cria o histograma com base nos dados fornecidos e adiciona informações no rodapé.
     """
-    fig, ax = plt.subplots(figsize=(12, 6))
+    fig, ax = plt.subplots(figsize=(12, 8))  # Aumentado a altura para acomodar o rodapé
     
     if remove_outliers:
         df = remove_outliers_from_df(df, 'DIFERENÇA (%)')
@@ -204,8 +204,16 @@ def create_histogram(df, title, remove_outliers=False):
     ax.text(0.01, 0.99, f"Dados fora dos limites: {outside_count} ({outside_percent:.2f}%)",
             transform=ax.transAxes, verticalalignment='top', fontsize=10)
     
-    # Ajustar o layout para evitar sobreposição de rótulos
+    # Adicionar informações no rodapé
+    plt.figtext(0.5, 0.01, f"Período analisado: {start_date.strftime('%d/%m/%Y')} a {end_date.strftime('%d/%m/%Y')}", 
+                ha="center", fontsize=10)
+    plt.figtext(0.01, 0.01, f"Total de batidas: {len(df)}", fontsize=10)
+    plt.figtext(0.99, 0.01, f"Gerado em: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}", 
+                ha="right", fontsize=10)
+    
+    # Ajustar o layout para acomodar o rodapé
     plt.tight_layout()
+    plt.subplots_adjust(bottom=0.1)
     
     return fig
 
@@ -271,6 +279,8 @@ def main():
                 
                 fig = create_histogram(mean_diff_per_batida, 
                                     f"Distribuição da Média da Diferença Percentual das Batidas ({'Sem' if remover_outliers else 'Com'} Outliers) - Confinamento",
+                                    start_date,
+                                    end_date,
                                     remover_outliers)
                 st.pyplot(fig)
                 
