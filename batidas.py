@@ -223,7 +223,7 @@ def main():
     
     with col2:
         if uploaded_file and iniciar_analise and df is not None:
-            st.header("Resultados da Análise - confinamento SJudas")
+            st.header("Resultados da Análise - confinamento")
             
             df_filtered = filter_data(df, operadores_selecionados, alimentos_selecionados, dietas_selecionadas, start_date, end_date)
             
@@ -233,7 +233,7 @@ def main():
                 mean_diff_per_batida = df_filtered.groupby('COD. BATIDA')['DIFERENÇA (%)'].mean().reset_index()
                 
                 fig = create_histogram(mean_diff_per_batida, 
-                                       f"Distribuição da Média da Diferença Percentual das Batidas ({'Sem' if remover_outliers else 'Com'} Outliers) - Confinamento SJudas",
+                                       f"Distribuição da Média da Diferença Percentual das Batidas ({'Sem' if remover_outliers else 'Com'} Outliers) - Confinamento",
                                        remover_outliers)
                 st.pyplot(fig)
                 
