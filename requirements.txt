@@ -1,8 +1,5 @@
-streamlit
-pandas
-numpy
-matplotlib
-openpyxl
-datetime
-io
-base64
+streamlit>=1.31.0
+pandas>=2.0.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+openpyxl>=3.0.0
