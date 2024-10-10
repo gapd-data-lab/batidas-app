@@ -90,4 +90,4 @@ FUNCTION SAVE_STATISTICS_AS_CSV(statistics):
     RETURN HTML link
 
 ## Program Execution
-CALL main()
+CALL main() 
