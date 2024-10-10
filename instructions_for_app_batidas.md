@@ -156,7 +156,7 @@ streamlit run batidas.py
 
 ```bash
 git status
-git add batidas.py "instructions_for_app_batidas.md" "requirements.txt"
+git add batidas.py "instructions_for_app_batidas.md" "requirements.txt" "pseudocode.md"
 git commit -m "Updated version of batidas app - improvements in graph and statistics table"
 git push origin main
 ```
