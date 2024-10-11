@@ -1,148 +1,87 @@
-# Objective
+Write a Python program using the Streamlit framework to create a data analysis web app for visualizing batch-level metrics using histograms. The program should meet the following requirements:
 
-Develop a Streamlit application for analyzing batch feeding data from confinement lots. The program should generate histograms and statistical tables based on Excel file input. It must be efficient, well-documented, and adhere to Python best practices.
+1. **Dependencies**:
+   - Use `pandas`, `numpy`, `matplotlib`, and `streamlit`.
+   - Import additional libraries such as `datetime`, `io`, `base64`, and `pytz` for specific functionalities.
 
-## Program Structure
+2. **Load and Process Data**:
+   - Create a function named `load_and_process_data(uploaded_file)`:
+     - Load an Excel file (`.xlsx`) while skipping the first two rows, which may contain metadata.
+     - Remove the first column of the dataset since it is considered irrelevant.
+     - Ensure that the column 'DIFERENÇA (%)' is present, and convert its values to numeric.
+     - Convert the column 'DATA' to datetime format to facilitate date-based filtering.
+     - Return the processed DataFrame.
 
-1. File Upload and Configuration
-2. Data Processing and Cleaning
-3. Statistical Analysis
-4. Results Visualization
-5. Statistics Table
-6. Data Export
+3. **Weighted Average Calculation**:
+   - Create a function named `calculate_weighted_average(df)`:
+     - Explicitly access the columns `PREVISTO (KG)`, `REALIZADO (KG)`, and `DIFERENÇA (%)` by their respective positions in the DataFrame.
+     - Calculate the absolute value of the percentage difference for each row.
+     - Group data by a column named 'COD. BATIDA' and calculate the weighted average of the differences:
+       - Calculate the contribution of each ingredient by multiplying the planned quantity by the percentage difference.
+       - Divide the sum of contributions by the total planned quantity for each batch to compute the weighted average.
+     - Return a new DataFrame containing the weighted averages.
 
-## Required Libraries and Configuration
+4. **Outlier Removal**:
+   - Create a function named `remove_outliers_from_df(df, column)`:
+     - Calculate the interquartile range (IQR) of the specified column.
+     - Define an upper bound to identify extreme values as outliers.
+     - Return a DataFrame excluding rows with values above the upper bound.
 
-### Libraries
+5. **Data Filtering**:
+   - Create a function named `filter_data(df, operadores, alimentos, dietas, start_date, end_date)`:
+     - Convert `start_date` and `end_date` to datetime.
+     - Filter the DataFrame based on date range and the selection criteria for operators (`OPERADOR`), food types (`ALIMENTO`), and diets (`NOME`).
+     - Return the filtered DataFrame.
 
-Include the following import statements at the beginning of your script:
+6. **Histogram Creation**:
+   - Create a function named `create_histogram(df, title, start_date, end_date, remove_outliers=False)`:
+     - Use `matplotlib` to create a histogram based on the column 'MÉDIA PONDERADA (%)'.
+     - Apply optional outlier removal if specified.
+     - Color the bars using a gradient based on their value:
+       - Values above a threshold (3%) should be colored with varying intensity of red.
+       - Values below the threshold should be colored green.
+     - Set appropriate labels, grid lines, and add a vertical dashed line at the 3% value.
+     - Include text in the footer of the histogram detailing the analysis period, the total number of batches, and the generation timestamp.
+     - Return the figure object.
 
-```python
-import streamlit as st
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from matplotlib.ticker import MaxNLocator, FuncFormatter
-import datetime
-import io
-import base64
-import pytz
-```
+7. **Image Saving and Download Link**:
+   - Create a function named `save_histogram_as_image(fig)`:
+     - Save the histogram figure as a PNG file and return an HTML link for downloading the image.
 
-### Streamlit Configuration
+8. **Statistics Table Creation**:
+   - Create a function named `save_statistics_as_csv(stats_df)`:
+     - Save a DataFrame containing statistics to a CSV file and return an HTML link for downloading the file.
 
-Set the page configuration at the beginning of your script:
+9. **Streamlit User Interface**:
+   - Define a `main()` function:
+     - Set up the Streamlit page configuration with an appropriate title and layout.
+     - Use two columns: one for the analysis settings and one for displaying results.
+     - Allow the user to upload an Excel file and set analysis parameters:
+       - Multi-selection for operators, food types, and diets.
+       - Date input for selecting the analysis period.
+       - Checkbox to allow outlier removal.
+       - Button to initiate the analysis.
+     - Upon clicking the "Generate" button:
+       - Load and filter the data based on user inputs.
+       - If the filtered data is not empty:
+         - Calculate the weighted average of percentage differences.
+         - Generate a histogram using the weighted averages.
+         - Display the histogram and offer the option to download it as a PNG.
+         - Create and display a table of relevant statistics, with the option to download it as a CSV file.
 
-```python
-st.set_page_config(page_title="Data Analysis - Histogram", layout="wide")
-```
+10. **Function Calls**:
+    - Ensure the `main()` function is called when the script runs, using:
+      ```python
+      if __name__ == "__main__":
+          main()
+      ```
 
-### Virtual Environment
+11. **General Requirements**:
+    - Use consistent formatting and add docstrings to all functions explaining their purpose, input parameters, and outputs.
+    - Make sure that all interactions (uploads, selections, and filters) are user-friendly, and that appropriate warnings are displayed if expected input is missing or incorrect.
+    - Include handling for time zone settings to display generation timestamps in a specific format (e.g., Brasília time).
 
-It's recommended to use a virtual environment. Create and activate it using:
-
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows use: venv\Scripts\activate
-```
-
-### Requirements File
-
-Create a `requirements.txt` file with the following content:
-
-```
-streamlit==1.28.0
-pandas==2.1.1
-numpy==1.26.0
-matplotlib==3.8.0
-openpyxl==3.1.2
-pytz==2023.3.post1
-```
-
-Install the requirements using:
-
-```bash
-pip install -r requirements.txt
-```
-
-## Detailed Instructions
-
-### 1. File Upload and User Interface
-
-- Use Streamlit to create an intuitive interface with two columns:
-  - Left column (`col1`): File upload and parameter selection
-  - Right column (`col2`): Results display
-- Implement:
-  - File uploader for Excel files
-  - Date range selector
-  - Multi-select dropdowns for operators, food types, and diets (alphabetically ordered, with "All" as default)
-  - Checkbox for outlier removal in histogram
-  - "Generate" button to initiate analysis
-
-### 2. Data Processing and Cleaning
-
-- Implement `load_and_process_data()`:
-  - Read Excel file, skipping first two rows and empty first column
-  - Clean and prepare data (e.g., convert "DIFERENÇA (%)" to numeric, handle missing values)
-- Implement `filter_data()` to apply user-selected filters
-- Handle date conversion using `pd.to_datetime()`
-- Calculate and remove outliers using IQR method
-
-### 3. Statistical Analysis
-
-- Implement `calculate_statistics_with_without_outliers()`:
-  - Calculate mean and median (with and without outliers)
-  - Count batches in difference ranges: 3-5%, 5-7%, >7%
-  - Calculate percentages for each range
-- Ensure all calculations respect user-selected filters
-
-### 4. Results Visualization
-
-- Implement `create_histogram()`:
-  - Use grayscale for bins, darkening away from center (0)
-  - Add vertical green line at x=0
-  - Customize x-axis labels (color-coded, size-varied)
-  - Include informative title
-  - Add footer with analysis period, total batches, and generation timestamp (Brasília time)
-- Render histogram using `st.pyplot()`
-
-### 5. Statistics Table
-
-- Create a DataFrame for organized statistics display
-- Use `styled_stats_df` for table styling (alignment, font size, column width)
-- Display table using `st.write()` with `to_html()`
-
-### 6. Data Export
-
-- Implement `save_histogram_as_image()` for PNG download
-- Implement `save_statistics_as_csv()` for CSV download
-- Provide download links for both
-
-## General Considerations
-
-- Use Brasília timezone for all date/time operations
-- Implement robust error handling and input validation
-- Set appropriate data types for columns (e.g., dates, numeric values)
-
-## Best Practices and Optimizations
-
-- Use docstrings for all main functions
-- Implement comprehensive error handling
-- Optimize for large datasets (consider sampling or batch processing)
-- Implement caching for repetitive operations
-- Follow DRY (Don't Repeat Yourself) principles
-
-## Testing and Validation
-
-- Implement unit tests for critical functions
-- Add input validations to ensure data consistency
-
-## Versioning and Documentation
-
-- Maintain an updated README.md
-- Use meaningful comments in code
-- Keep requirements.txt updated
+The program should ensure clear code organization, modularity, and proper documentation throughout. The objective is to create a web-based interactive data visualization tool using Streamlit that allows users to upload a dataset, filter data, analyze it, and visualize the results through histograms.
 
 ## Running the Application
 

@@ -12,10 +12,14 @@ import pytz
 def load_and_process_data(uploaded_file):
     """
     Carrega e processa os dados do arquivo Excel.
+
+    - Lê os dados do arquivo Excel, pulando as duas primeiras linhas, que podem conter metadados irrelevantes.
+    - Remove a primeira coluna, que foi considerada irrelevante.
+    - Verifica a presença da coluna 'DIFERENÇA (%)' e converte-a para valores numéricos.
+    - Converte a coluna 'DATA' para o formato datetime para facilitar filtros posteriores.
     """
     df = pd.read_excel(uploaded_file, skiprows=2)
-    df = df.iloc[:, 1:]
-    df.columns = df.columns.str.strip().str.upper()
+    df = df.iloc[:, 1:]  # Remover a primeira coluna irrelevante
     
     if 'DIFERENÇA (%)' not in df.columns:
         st.error("Coluna 'DIFERENÇA (%)' não encontrada no arquivo Excel.")
@@ -26,75 +30,62 @@ def load_and_process_data(uploaded_file):
     
     return df
 
-def calculate_statistics_with_without_outliers(df, column):
-    data = df[column]
+def calculate_weighted_average(df):
+    """
+    Calcula a média ponderada das diferenças percentuais absolutas para cada batida.
+
+    - Acessa explicitamente as colunas 'PREVISTO (KG)', 'REALIZADO (KG)', e 'DIFERENÇA (%)' a partir de suas respectivas posições originais na planilha.
+    - Agrupa os dados por 'COD. BATIDA' para calcular separadamente cada batida.
+    - Converte as colunas relevantes para valores numéricos.
+    - Calcula a diferença percentual absoluta para cada linha.
+    - Calcula a contribuição de cada ingrediente na receita, multiplicando a quantidade planejada pela diferença percentual.
+    - Calcula a média ponderada dividindo a soma das contribuições pelo total planejado para cada batida.
     
-    count = len(data)
-    mean = data.mean()
-    median = data.median()
+    Retorna um DataFrame com as médias ponderadas das diferenças percentuais absolutas para cada batida.
+    """
+    # Acessar explicitamente as colunas M, N e P
+    df['PREVISTO (KG)'] = pd.to_numeric(df.iloc[:, 12], errors='coerce')  # Coluna M
+    df['REALIZADO (KG)'] = pd.to_numeric(df.iloc[:, 13], errors='coerce')  # Coluna N
+    df['DIFERENÇA (%)'] = pd.to_numeric(df.iloc[:, 14], errors='coerce')  # Coluna P
+    df['DIFERENÇA (%) ABS'] = df['DIFERENÇA (%)'].abs()
     
-    Q1 = data.quantile(0.25)
-    Q3 = data.quantile(0.75)
-    IQR = Q3 - Q1
-    lower_bound = Q1 - 1.5 * IQR
-    upper_bound = Q3 + 1.5 * IQR
-    
-    faixa_3_5 = 0
-    faixa_5_7 = 0
-    faixa_acima_7 = 0
-    sum_without_outliers = 0
-    count_without_outliers = 0
-    
-    for value in data:
-        abs_value = abs(value)
+    # Agrupar por 'COD. BATIDA' e calcular a média ponderada para cada batida
+    weighted_averages = []
+    for batida, group in df.groupby('COD. BATIDA'):
+        # Calcular a contribuição ponderada de cada ingrediente
+        group['CONTRIBUIÇÃO'] = group['PREVISTO (KG)'] * (group['DIFERENÇA (%) ABS'] / 100)
         
-        if 3 <= abs_value < 5:
-            faixa_3_5 += 1
-        elif 5 <= abs_value < 7:
-            faixa_5_7 += 1
-        elif abs_value >= 7:
-            faixa_acima_7 += 1
+        # Calcular a média ponderada para a batida atual
+        total_planned_quantity = group['PREVISTO (KG)'].sum()
+        weighted_average = (group['CONTRIBUIÇÃO'].sum() / total_planned_quantity) * 100 if total_planned_quantity > 0 else 0
         
-        if lower_bound <= value <= upper_bound:
-            sum_without_outliers += value
-            count_without_outliers += 1
+        weighted_averages.append({'COD. BATIDA': batida, 'MÉDIA PONDERADA (%)': weighted_average})
     
-    mean_without_outliers = sum_without_outliers / count_without_outliers if count_without_outliers > 0 else 0
-    
-    percentual_3_5 = (faixa_3_5 / count) * 100
-    percentual_5_7 = (faixa_5_7 / count) * 100
-    percentual_acima_7 = (faixa_acima_7 / count) * 100
-    
-    return {
-        'com_outliers': {
-            'num_batidas': count,
-            'media': mean,
-            'mediana': median,
-            'faixa_3_5': faixa_3_5,
-            'faixa_5_7': faixa_5_7,
-            'faixa_acima_7': faixa_acima_7,
-            'percentual_3_5': percentual_3_5,
-            'percentual_5_7': percentual_5_7,
-            'percentual_acima_7': percentual_acima_7
-        },
-        'sem_outliers': {
-            'num_batidas': count_without_outliers,
-            'media': mean_without_outliers,
-            'mediana': median
-        }
-    }
+    return pd.DataFrame(weighted_averages)
 
 def remove_outliers_from_df(df, column):
+    """
+    Remove outliers dos dados, considerando apenas valores extremamente altos como outliers.
+
+    - Calcula o primeiro e terceiro quartis (Q1 e Q3) e o intervalo interquartil (IQR).
+    - Define o limite superior para identificar valores extremamente altos como outliers.
+    - Retorna o DataFrame sem os valores que estão acima desse limite.
+    """
     Q1 = df[column].quantile(0.25)
     Q3 = df[column].quantile(0.75)
     IQR = Q3 - Q1
-    lower_bound = Q1 - 1.5 * IQR
     upper_bound = Q3 + 1.5 * IQR
-    return df[(df[column] >= lower_bound) & (df[column] <= upper_bound)]
+    return df[df[column] <= upper_bound]
 
 def filter_data(df, operadores, alimentos, dietas, start_date, end_date):
     """
     Filtra os dados com base nos operadores, alimentos, dietas e período de datas.
+
+    - Converte as datas de início e fim para o formato datetime.
+    - Filtra o DataFrame para incluir apenas as linhas dentro do intervalo de datas selecionado.
+    - Aplica filtros adicionais com base nos operadores, alimentos e dietas selecionados.
+    
+    Retorna o DataFrame filtrado de acordo com os critérios definidos.
     """
     # Converter start_date e end_date para datetime
     start_datetime = pd.to_datetime(start_date)
@@ -111,13 +102,6 @@ def filter_data(df, operadores, alimentos, dietas, start_date, end_date):
     
     return df
 
-def create_color_scale(values):
-    """
-    Cria uma escala de cores em tons de cinza baseada na distância do zero.
-    """
-    max_distance = max(abs(values))
-    return [mcolors.to_rgba('gray', alpha=abs(v)/max_distance) for v in values]
-
 def create_histogram(df, title, start_date, end_date, remove_outliers=False):
     """
     Cria o histograma com base nos dados fornecidos e adiciona informações no rodapé.
@@ -125,17 +109,17 @@ def create_histogram(df, title, start_date, end_date, remove_outliers=False):
     fig, ax = plt.subplots(figsize=(12, 8))  # Aumentado a altura para acomodar o rodapé
     
     if remove_outliers:
-        df = remove_outliers_from_df(df, 'DIFERENÇA (%)')
+        df = remove_outliers_from_df(df, 'MÉDIA PONDERADA (%)')
     
     # Calcular os limites para o eixo X
-    data = df['DIFERENÇA (%)']
+    data = df['MÉDIA PONDERADA (%)']
+    data = data[data >= 0]  # Considerar apenas valores positivos
     q1, q3 = np.percentile(data, [25, 75])
     iqr = q3 - q1
-    lower_bound = q1 - 1.5 * iqr
+    lower_bound = 0  # Limite inferior definido como 0 para valores positivos
     upper_bound = q3 + 1.5 * iqr
     
     # Ajustar os limites para o número inteiro mais próximo
-    lower_bound = np.floor(lower_bound)
     upper_bound = np.ceil(upper_bound)
     
     # Usar bins adaptativos
@@ -146,17 +130,24 @@ def create_histogram(df, title, start_date, end_date, remove_outliers=False):
     # Criar o histograma
     n, bins, patches = ax.hist(data, bins=n_bins, range=(lower_bound, upper_bound), edgecolor='black')
     
-    # Colorir as barras
-    colors = create_color_scale(bins[:-1])
-    for patch, color in zip(patches, colors):
-        patch.set_facecolor(color)
+    # Colorir as barras com escala de cores
+    for patch, bin_value in zip(patches, bins[:-1]):
+        if bin_value >= 3:
+            color_intensity = min((bin_value - 3) / (upper_bound - 3), 1)  # Intensidade baseada na distância do valor 3
+            patch.set_facecolor((1, 0, 0, color_intensity))  # Escala de vermelho
+        else:
+            color_intensity = min((3 - bin_value) / 3, 1)  # Intensidade baseada na proximidade do valor 0
+            patch.set_facecolor((0, 1, 0, color_intensity))  # Escala de verde
     
-    ax.set_xlabel('Diferença (%)')
+    ax.set_xlabel('Média Ponderada da Diferença (%)')
     ax.set_ylabel('Frequência')
     ax.set_title(title)
     
-    # Adicionar linha vertical no zero
-    ax.axvline(x=0, color='green', linestyle='-', linewidth=2, label='Centro (0)')
+    # Adicionar linha vertical no valor 3 com estilo tracejado
+    ax.axvline(x=3, color='green', linestyle='--', linewidth=2, label='Tolerância Máxima (3%)')
+    
+    # Adicionar legenda explicativa
+    ax.legend(loc='upper right')
     
     # Configurar grid
     ax.grid(axis='y', linestyle='--', linewidth=0.7)
@@ -170,31 +161,6 @@ def create_histogram(df, title, start_date, end_date, remove_outliers=False):
         return int(tick_val)
     
     ax.xaxis.set_major_formatter(FuncFormatter(format_fn))
-    
-    # Colorir e ajustar os rótulos do eixo X
-    for label in ax.get_xticklabels():
-        try:
-            tick_value = int(float(label.get_text().replace('−', '-')))
-            if tick_value <= -4:
-                label.set_color('red')
-            elif -3 <= tick_value <= 3:
-                label.set_color('green')
-            elif tick_value >= 4:
-                label.set_color('blue')
-            else:
-                label.set_color('black')
-            
-            # Destacar o eixo central (0)
-            if tick_value == 0:
-                label.set_color('darkgreen')
-                label.set_fontweight('bold')
-                label.set_fontsize(10)
-            else:
-                # Ajustar o tamanho da fonte para números pares e ímpares
-                label.set_fontsize(12 if tick_value % 2 != 0 else 8)
-            
-        except ValueError:
-            continue
     
     # Adicionar informações sobre dados fora dos limites
     total_count = len(data)
@@ -269,37 +235,34 @@ def main():
                 dietas_selecionadas = st.multiselect('Escolha as Dietas:', dietas, default=['Todos'])
                 operadores_selecionados = st.multiselect('Escolha os Operadores:', operadores, default=['Todos'])
                 
-                remover_outliers = st.checkbox("Remover outliers do histograma")
+                remover_outliers = st.checkbox("Remover outliers do histograma", help="Remover valores extremos que podem distorcer a análise, filtrando dados que estão muito fora da maioria.")
                 
                 iniciar_analise = st.button("Gerar")
     
     with col2:
         if uploaded_file and iniciar_analise and df is not None:
-            st.header("Resultados da Análise - confinamento")
+            st.header("Resultados da Análise - Confinamento")
             
             df_filtered = filter_data(df, operadores_selecionados, alimentos_selecionados, dietas_selecionadas, start_date, end_date)
             
             if df_filtered.empty:
                 st.warning("Não há dados suficientes para gerar a análise.")
             else:
-                mean_diff_per_batida = df_filtered.groupby('COD. BATIDA')['DIFERENÇA (%)'].mean().reset_index()
+                # Calcular a média ponderada das diferenças percentuais
+                weighted_average_df = calculate_weighted_average(df_filtered)
                 
-                fig = create_histogram(mean_diff_per_batida, 
-                                    f"Distribuição da Média da Diferença Percentual das Batidas ({'Sem' if remover_outliers else 'Com'} Outliers) - Confinamento",
-                                    start_date,
-                                    end_date,
-                                    remover_outliers)
+                # Criar e exibir o histograma usando as médias ponderadas por batida
+                fig = create_histogram(weighted_average_df, 
+                                       f"Distribuição da Média Ponderada da Diferença Percentual ({'Sem' if remover_outliers else 'Com'} Outliers) - Confinamento",
+                                       start_date,
+                                       end_date,
+                                       remover_outliers)
                 st.pyplot(fig)
                 
                 # Adicionar opção para salvar o histograma
                 st.markdown(save_histogram_as_image(fig), unsafe_allow_html=True)
                 
-                # Novo código para calcular estatísticas
-                stats = calculate_statistics_with_without_outliers(mean_diff_per_batida, 'DIFERENÇA (%)')
-                stats_com_outliers = stats['com_outliers']
-                stats_sem_outliers = stats['sem_outliers']
-                
-                # Criar DataFrame para a tabela de estatísticas
+                # Criar a tabela de estatísticas
                 stats_data = {
                     'Estatística': [
                         'Número de Batidas', 
@@ -310,32 +273,33 @@ def main():
                         'Diferença acima de 7%'
                     ],
                     'Com Outliers': [
-                        stats_com_outliers['num_batidas'],
-                        f"{stats_com_outliers['media']:.2f}",
-                        f"{stats_com_outliers['mediana']:.2f}",
-                        stats_com_outliers['faixa_3_5'],
-                        stats_com_outliers['faixa_5_7'],
-                        stats_com_outliers['faixa_acima_7']
+                        len(weighted_average_df),
+                        f"{weighted_average_df['MÉDIA PONDERADA (%)'].mean():.2f}",
+                        f"{weighted_average_df['MÉDIA PONDERADA (%)'].median():.2f}",
+                        ((weighted_average_df['MÉDIA PONDERADA (%)'] >= 3) & (weighted_average_df['MÉDIA PONDERADA (%)'] < 5)).sum(),
+                        ((weighted_average_df['MÉDIA PONDERADA (%)'] >= 5) & (weighted_average_df['MÉDIA PONDERADA (%)'] < 7)).sum(),
+                        (weighted_average_df['MÉDIA PONDERADA (%)'] >= 7).sum()
                     ],
                     'Percentual (%)': [
                         '-',
                         '-',
                         '-',
-                        f"{stats_com_outliers['percentual_3_5']:.2f}%",
-                        f"{stats_com_outliers['percentual_5_7']:.2f}%",
-                        f"{stats_com_outliers['percentual_acima_7']:.2f}%"
+                        f"{((weighted_average_df['MÉDIA PONDERADA (%)'] >= 3) & (weighted_average_df['MÉDIA PONDERADA (%)'] < 5)).mean() * 100:.2f}%",
+                        f"{((weighted_average_df['MÉDIA PONDERADA (%)'] >= 5) & (weighted_average_df['MÉDIA PONDERADA (%)'] < 7)).mean() * 100:.2f}%",
+                        f"{(weighted_average_df['MÉDIA PONDERADA (%)'] >= 7).mean() * 100:.2f}%"
                     ],
                     'Sem Outliers': [
-                        stats_sem_outliers['num_batidas'],
-                        f"{stats_sem_outliers['media']:.2f}",
-                        f"{stats_sem_outliers['mediana']:.2f}",
+                        len(weighted_average_df) - len(remove_outliers_from_df(weighted_average_df, 'MÉDIA PONDERADA (%)')),
+                        f"{remove_outliers_from_df(weighted_average_df, 'MÉDIA PONDERADA (%)')['MÉDIA PONDERADA (%)'].mean():.2f}",
+                        f"{remove_outliers_from_df(weighted_average_df, 'MÉDIA PONDERADA (%)')['MÉDIA PONDERADA (%)'].median():.2f}",
                         '-',
                         '-',
                         '-'
                     ]
                 }
-                stats_df = pd.DataFrame(stats_data)
                 
+                stats_df = pd.DataFrame(stats_data)
+
                 # Estilizar a tabela para melhor visualização
                 styled_stats_df = stats_df.style.set_table_styles([
                     {'selector': 'th', 'props': [('font-size', '14px'), ('text-align', 'center')]},
@@ -344,19 +308,16 @@ def main():
                 ]).set_properties(**{'width': '200px'}, subset=['Estatística']).set_properties(
                     **{'width': '150px'}, subset=['Com Outliers', 'Sem Outliers', 'Percentual (%)']
                 )
-                
+
                 # Exibir a tabela de estatísticas estilizada
                 st.write("### Estatísticas Principais das Diferenças Percentuais")
                 st.write(styled_stats_df.to_html(), unsafe_allow_html=True)
                 
-                # Adicionar opção para salvar as estatísticas
+                # Adicionar opção para salvar as estatísticas como CSV
                 st.markdown(save_statistics_as_csv(stats_df), unsafe_allow_html=True)
                 
                 if remover_outliers:
-                    st.info(f"Nota: Outliers foram removidos do histograma.")
+                    st.info("Nota: Outliers foram removidos do histograma. Isso significa que valores extremamente altos, que podem distorcer a análise, foram excluídos para fornecer uma visão mais representativa dos dados.")
 
 if __name__ == "__main__":
     main()
-
-# programa escrito com auxilio das LLM OpenAi GTP 4o e Anthropic Claude 3.5 sonnet.
-# data: 09 de outubro de 2024.
