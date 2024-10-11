@@ -35,13 +35,6 @@ def calculate_weighted_average_with_weights(df, pesos_relativos):
     Calcula a média ponderada das diferenças percentuais absolutas para cada batida,
     considerando os pesos definidos para cada tipo de alimento.
 
-    - Acessa explicitamente as colunas 'PREVISTO (KG)', 'REALIZADO (KG)', e 'DIFERENÇA (%)' a partir de suas respectivas posições originais na planilha.
-    - Agrupa os dados por 'COD. BATIDA' para calcular separadamente cada batida.
-    - Converte as colunas relevantes para valores numéricos.
-    - Calcula a diferença percentual absoluta para cada linha.
-    - Ajusta o peso relativo pelo tipo de alimento e calcula a contribuição ponderada.
-    - Calcula a média ponderada dividindo a soma das contribuições pelo total planejado para cada batida.
-
     Retorna um DataFrame com as médias ponderadas das diferenças percentuais absolutas para cada batida.
     """
     # Acessar explicitamente as colunas M, N e P
@@ -50,23 +43,26 @@ def calculate_weighted_average_with_weights(df, pesos_relativos):
     df['DIFERENÇA (%)'] = pd.to_numeric(df.iloc[:, 14], errors='coerce')  # Coluna P
     df['DIFERENÇA (%) ABS'] = df['DIFERENÇA (%)'].abs()
 
-    # Agrupar por 'COD. BATIDA' e calcular a média ponderada para cada batida
-    weighted_averages = []
-    for batida, group in df.groupby('COD. BATIDA'):
-        # Ajustar a quantidade planejada com o peso relativo do tipo de alimento
-        group['PESO RELATIVO'] = group['TIPO'].map(pesos_relativos)  # Atribuir o peso relativo baseado no tipo
-        group['PESO AJUSTADO'] = group['PREVISTO (KG)'] * group['PESO RELATIVO']
-        
-        # Calcular a contribuição ponderada de cada ingrediente ajustada pelo peso relativo
-        group['CONTRIBUIÇÃO'] = group['PESO AJUSTADO'] * (group['DIFERENÇA (%) ABS'] / 100)
-        
-        # Calcular a média ponderada para a batida atual
-        total_planned_quantity = group['PESO AJUSTADO'].sum()
-        weighted_average = (group['CONTRIBUIÇÃO'].sum() / total_planned_quantity) * 100 if total_planned_quantity > 0 else 0
-        
-        weighted_averages.append({'COD. BATIDA': batida, 'MÉDIA PONDERADA (%)': weighted_average})
+    # Ajustar a quantidade planejada com o peso relativo do tipo de alimento
+    df['PESO RELATIVO'] = df['TIPO'].map(pesos_relativos)  # Atribuir o peso relativo baseado no tipo
+    df['PESO AJUSTADO'] = df['PREVISTO (KG)'] * df['PESO RELATIVO']
+
+    # Calcular a contribuição ponderada de cada ingrediente ajustada pelo peso relativo
+    df['CONTRIBUIÇÃO'] = df['PESO AJUSTADO'] * (df['DIFERENÇA (%) ABS'] / 100)
+
+    # Calcular a média ponderada para cada batida usando operação vetorizada
+    grouped = df.groupby('COD. BATIDA')
+    total_planned_quantity = grouped['PESO AJUSTADO'].sum()
+    total_contribution = grouped['CONTRIBUIÇÃO'].sum()
+    weighted_average = (total_contribution / total_planned_quantity) * 100
     
-    return pd.DataFrame(weighted_averages)
+    # Criar um DataFrame com as médias ponderadas
+    weighted_averages = pd.DataFrame({
+        'COD. BATIDA': total_planned_quantity.index,
+        'MÉDIA PONDERADA (%)': weighted_average.fillna(0)  # Substituir valores NaN por 0
+    })
+    
+    return weighted_averages
 
 def remove_outliers_from_df(df, column):
     """
@@ -107,6 +103,37 @@ def filter_data(df, operadores, alimentos, dietas, start_date, end_date):
     
     return df
 
+def calculate_histogram_bins(data):
+    """
+    Calcula os limites e o número de bins para o histograma usando a regra de Freedman-Diaconis.
+    """
+    q1, q3 = np.percentile(data, [25, 75])
+    iqr = q3 - q1
+    lower_bound = 0  # Limite inferior definido como 0 para valores positivos
+    upper_bound = q3 + 1.5 * iqr
+
+    # Ajustar os limites para o número inteiro mais próximo
+    upper_bound = np.ceil(upper_bound)
+
+    # Usar bins adaptativos
+    bin_width = 2 * iqr * (len(data) ** (-1/3))  # Regra de Freedman-Diaconis
+    n_bins = int((upper_bound - lower_bound) / bin_width)
+    n_bins = min(n_bins, 100)  # Limitar o número máximo de bins
+
+    return lower_bound, upper_bound, n_bins
+
+def color_histogram_bars(patches, bins):
+    """
+    Colore as barras do histograma com uma escala de cores baseada nos valores dos bins.
+    """
+    for patch, bin_value in zip(patches, bins[:-1]):
+        if bin_value >= 3:
+            color_intensity = min((bin_value - 3) / (bins[-1] - 3), 1)  # Intensidade baseada na distância do valor 3
+            patch.set_facecolor((1, 0, 0, color_intensity))  # Escala de vermelho
+        else:
+            color_intensity = min((3 - bin_value) / 3, 1)  # Intensidade baseada na proximidade do valor 0
+            patch.set_facecolor((0, 1, 0, color_intensity))  # Escala de verde
+
 def create_histogram(df, title, start_date, end_date, remove_outliers=False):
     """
     Cria o histograma com base nos dados fornecidos e adiciona informações no rodapé.
@@ -116,43 +143,23 @@ def create_histogram(df, title, start_date, end_date, remove_outliers=False):
     if remove_outliers:
         df = remove_outliers_from_df(df, 'MÉDIA PONDERADA (%)')
     
-    # Calcular os limites para o eixo X
     data = df['MÉDIA PONDERADA (%)']
     data = data[data >= 0]  # Considerar apenas valores positivos
-    q1, q3 = np.percentile(data, [25, 75])
-    iqr = q3 - q1
-    lower_bound = 0  # Limite inferior definido como 0 para valores positivos
-    upper_bound = q3 + 1.5 * iqr
     
-    # Ajustar os limites para o número inteiro mais próximo
-    upper_bound = np.ceil(upper_bound)
-    
-    # Usar bins adaptativos
-    bin_width = 2 * iqr * (len(data) ** (-1/3))  # Regra de Freedman-Diaconis
-    n_bins = int((upper_bound - lower_bound) / bin_width)
-    n_bins = min(n_bins, 100)  # Limitar o número máximo de bins
+    lower_bound, upper_bound, n_bins = calculate_histogram_bins(data)
     
     # Criar o histograma
     n, bins, patches = ax.hist(data, bins=n_bins, range=(lower_bound, upper_bound), edgecolor='black')
     
     # Colorir as barras com escala de cores
-    for patch, bin_value in zip(patches, bins[:-1]):
-        if bin_value >= 3:
-            color_intensity = min((bin_value - 3) / (upper_bound - 3), 1)  # Intensidade baseada na distância do valor 3
-            patch.set_facecolor((1, 0, 0, color_intensity))  # Escala de vermelho
-        else:
-            color_intensity = min((3 - bin_value) / 3, 1)  # Intensidade baseada na proximidade do valor 0
-            patch.set_facecolor((0, 1, 0, color_intensity))  # Escala de verde
+    color_histogram_bars(patches, bins)
     
     ax.set_xlabel('Média Ponderada da Diferença (%)')
     ax.set_ylabel('Frequência')
     ax.set_title(title)
     
     # Adicionar linha vertical no valor 3 com estilo tracejado
-    # Adicionar linha de tolerância máxima
     ax.axvline(x=3, color='green', linestyle='--', linewidth=2, label='Tolerância Máxima (3%)')
-
-    # Ajustar a posição e o estilo da legenda utilizando os mesmos parâmetros da tabela de pesos
     ax.legend(
         loc='upper right',
         fontsize=8,
@@ -161,36 +168,20 @@ def create_histogram(df, title, start_date, end_date, remove_outliers=False):
         edgecolor='black',
         fancybox=True,
         framealpha=0.5,
-        bbox_to_anchor=(0.955, 0.95),  # Ajustando a posição para corresponder aos parâmetros da tabela de pesos
+        bbox_to_anchor=(0.955, 0.95),
         bbox_transform=ax.transAxes
     )
 
-    # Configurar grid
     ax.grid(axis='y', linestyle='--', linewidth=0.7)
     ax.set_axisbelow(True)  # Colocar o grid atrás das barras
-    
-    # Configurar ticks inteiros no eixo X
     ax.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=20, prune='both'))
     
-    # Função para formatar os rótulos como inteiros
     def format_fn(tick_val, tick_pos):
         return int(tick_val)
-    
     ax.xaxis.set_major_formatter(FuncFormatter(format_fn))
-    
-    # Adicionar informações sobre dados fora dos limites
-    total_count = len(data)
-    inside_count = ((data >= lower_bound) & (data <= upper_bound)).sum()
-    outside_count = total_count - inside_count
-    outside_percent = (outside_count / total_count) * 100
-    
-    ax.text(0.01, 0.99, f"Dados fora dos limites: {outside_count} ({outside_percent:.2f}%)",
-            transform=ax.transAxes, verticalalignment='top', fontsize=10)
     
     # Configurar o fuso horário de Brasília
     brasilia_tz = pytz.timezone('America/Sao_Paulo')
-    
-    # Obter a data e hora atual em Brasília
     now_brasilia = datetime.datetime.now(brasilia_tz)
     
     # Adicionar informações no rodapé
@@ -200,7 +191,6 @@ def create_histogram(df, title, start_date, end_date, remove_outliers=False):
     plt.figtext(0.99, 0.01, f"Gerado em: {now_brasilia.strftime('%d/%m/%Y %H:%M')} (Horário de Brasília)", 
                 ha="right", fontsize=10)
     
-    # Ajustar o layout para acomodar o rodapé
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.1)
     
