@@ -12,13 +12,15 @@ Write a Python program using the Streamlit framework to create a data analysis w
      - Convert the column 'DATA' to datetime format to facilitate date-based filtering.
      - Return the processed DataFrame.
 
-3. **Weighted Average Calculation**:
-   - Create a function named `calculate_weighted_average(df)`:
+3. **Weighted Average Calculation with Relative Weights**:
+   - Create a function named `calculate_weighted_average_with_weights(df, pesos_relativos)`:
      - Explicitly access the columns `PREVISTO (KG)`, `REALIZADO (KG)`, and `DIFERENÇA (%)` by their respective positions in the DataFrame.
      - Calculate the absolute value of the percentage difference for each row.
+     - Assign relative weights to each type of food (`TIPO`) based on user-defined inputs.
+     - Calculate the adjusted planned quantity (`PESO AJUSTADO`) by multiplying `PREVISTO (KG)` by the relative weight (`PESO RELATIVO`).
      - Group data by a column named 'COD. BATIDA' and calculate the weighted average of the differences:
-       - Calculate the contribution of each ingredient by multiplying the planned quantity by the percentage difference.
-       - Divide the sum of contributions by the total planned quantity for each batch to compute the weighted average.
+       - Calculate the contribution of each ingredient by multiplying the adjusted planned quantity by the percentage difference.
+       - Divide the sum of contributions by the total adjusted planned quantity for each batch to compute the weighted average.
      - Return a new DataFrame containing the weighted averages.
 
 4. **Outlier Removal**:
@@ -57,6 +59,7 @@ Write a Python program using the Streamlit framework to create a data analysis w
      - Set up the Streamlit page configuration with an appropriate title and layout.
      - Use two columns: one for the analysis settings and one for displaying results.
      - Allow the user to upload an Excel file and set analysis parameters:
+       - Sliders to set relative weights for each type of food (`TIPO`).
        - Multi-selection for operators, food types, and diets.
        - Date input for selecting the analysis period.
        - Checkbox to allow outlier removal.
@@ -64,10 +67,13 @@ Write a Python program using the Streamlit framework to create a data analysis w
      - Upon clicking the "Generate" button:
        - Load and filter the data based on user inputs.
        - If the filtered data is not empty:
-         - Calculate the weighted average of percentage differences.
+         - Calculate the weighted average of percentage differences considering the relative weights.
          - Generate a histogram using the weighted averages.
          - Display the histogram and offer the option to download it as a PNG.
          - Create and display a table of relevant statistics, with the option to download it as a CSV file.
+         - The table should include statistics both **with** and **without** outliers, such as:
+           - Number of batches.
+           - Mean, median, and counts for different percentage ranges (e.g., between 3% and 5%, above 7%).
 
 10. **Function Calls**:
     - Ensure the `main()` function is called when the script runs, using:
@@ -81,7 +87,7 @@ Write a Python program using the Streamlit framework to create a data analysis w
     - Make sure that all interactions (uploads, selections, and filters) are user-friendly, and that appropriate warnings are displayed if expected input is missing or incorrect.
     - Include handling for time zone settings to display generation timestamps in a specific format (e.g., Brasília time).
 
-The program should ensure clear code organization, modularity, and proper documentation throughout. The objective is to create a web-based interactive data visualization tool using Streamlit that allows users to upload a dataset, filter data, analyze it, and visualize the results through histograms.
+The program should ensure clear code organization, modularity, and proper documentation throughout. The objective is to create a web-based interactive data visualization tool using Streamlit that allows users to upload a dataset, set weights, filter data, analyze it, and visualize the results through histograms.
 
 ## Running the Application
 

@@ -10,12 +10,14 @@
    - Convert 'DATA' column to datetime format.
    - Return processed DataFrame.
 
-   b. `calculate_weighted_average(df)`:
+   b. `calculate_weighted_average_with_weights(df, pesos_relativos)`:
    - Extract columns: 'PREVISTO (KG)', 'REALIZADO (KG)', 'DIFERENÇA (%)' from specific positions.
    - Calculate absolute difference percentage for each row.
+   - Assign relative weights to each 'TIPO' of food using `pesos_relativos`.
+   - Calculate adjusted planned quantity (`PESO AJUSTADO`) by multiplying `PREVISTO (KG)` by the relative weight.
    - Group data by 'COD. BATIDA'.
-   - Calculate contribution for each ingredient: `planned_quantity * difference_percentage`.
-   - Calculate weighted average: `sum(contributions) / total_planned_quantity`.
+   - Calculate contribution for each ingredient: `adjusted_planned_quantity * difference_percentage`.
+   - Calculate weighted average: `sum(contributions) / total_adjusted_planned_quantity`.
    - Return DataFrame with weighted averages.
 
    c. `remove_outliers_from_df(df, column)`:
@@ -55,6 +57,7 @@
      - Upload Excel file.
      - Call `load_and_process_data()`.
      - If data loaded successfully:
+       - Set sliders for relative weights for each type of food (`TIPO`).
        - Set filter options: operators, food types, diets.
        - Date range input.
        - Checkbox for outlier removal.
@@ -63,15 +66,15 @@
      - If analysis button is clicked:
        - Filter data with `filter_data()`.
        - If filtered data is not empty:
-         - Calculate weighted averages with `calculate_weighted_average()`.
+         - Calculate weighted averages with `calculate_weighted_average_with_weights()`.
          - Create histogram with `create_histogram()`.
          - Display histogram using Streamlit.
          - Offer histogram download using `save_histogram_as_image()`.
-         - Create and display statistics table.
+         - Create and display statistics table including **with** and **without** outliers.
          - Offer statistics download using `save_statistics_as_csv()`.
 
 4. **Entry Point**:
    - Call `main()` when script is executed.
 
 ## Program Execution
-CALL main() 
+CALL main()
