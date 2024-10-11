@@ -1,86 +1,92 @@
 Write a Python program using the Streamlit framework to create a data analysis web app for visualizing batch-level metrics using histograms. The program should meet the following requirements:
 
+### Key Requirements:
+
 1. **Dependencies**:
    - Use `pandas`, `numpy`, `matplotlib`, and `streamlit`.
    - Import additional libraries such as `datetime`, `io`, `base64`, and `pytz` for specific functionalities.
 
 2. **Load and Process Data**:
-   - Create a function named `load_and_process_data(uploaded_file)`:
-     - Load an Excel file (`.xlsx`) while skipping the first two rows, which may contain metadata.
-     - Remove the first column of the dataset since it is considered irrelevant.
-     - Ensure that the column 'DIFERENÇA (%)' is present, and convert its values to numeric.
-     - Convert the column 'DATA' to datetime format to facilitate date-based filtering.
+   - Function: `load_and_process_data(uploaded_file)`
+     - Load an Excel file (`.xlsx`), skipping the first two rows (metadata).
+     - Remove the first column since it is irrelevant.
+     - Ensure 'DIFERENÇA (%)' is present and convert its values to numeric.
+     - Convert 'DATA' to datetime format for filtering.
      - Return the processed DataFrame.
 
 3. **Weighted Average Calculation with Relative Weights**:
-   - Create a function named `calculate_weighted_average_with_weights(df, pesos_relativos)`:
-     - Explicitly access the columns `PREVISTO (KG)`, `REALIZADO (KG)`, and `DIFERENÇA (%)` by their respective positions in the DataFrame.
-     - Calculate the absolute value of the percentage difference for each row.
-     - Assign relative weights to each type of food (`TIPO`) based on user-defined inputs.
-     - Calculate the adjusted planned quantity (`PESO AJUSTADO`) by multiplying `PREVISTO (KG)` by the relative weight (`PESO RELATIVO`).
-     - Group data by a column named 'COD. BATIDA' and calculate the weighted average of the differences:
-       - Calculate the contribution of each ingredient by multiplying the adjusted planned quantity by the percentage difference.
-       - Divide the sum of contributions by the total adjusted planned quantity for each batch to compute the weighted average.
-     - Return a new DataFrame containing the weighted averages.
+   - Function: `calculate_weighted_average_with_weights(df, pesos_relativos)`
+     - Access columns `PREVISTO (KG)`, `REALIZADO (KG)`, and `DIFERENÇA (%)` by their positions.
+     - Calculate the absolute value of the percentage difference.
+     - Assign relative weights to each type of food (`TIPO`) using user inputs.
+     - Calculate the adjusted planned quantity (`PESO AJUSTADO`).
+     - Group data by 'COD. BATIDA' and calculate the weighted average of the differences:
+       - Multiply the adjusted planned quantity by the percentage difference to determine contributions.
+       - Divide the sum of contributions by total adjusted planned quantity for each batch.
+     - Return a DataFrame containing the weighted averages.
 
 4. **Outlier Removal**:
-   - Create a function named `remove_outliers_from_df(df, column)`:
-     - Calculate the interquartile range (IQR) of the specified column.
-     - Define an upper bound to identify extreme values as outliers.
-     - Return a DataFrame excluding rows with values above the upper bound.
+   - Function: `remove_outliers_from_df(df, column)`
+     - Use the IQR method to calculate and exclude values above a calculated upper bound.
+     - Return the filtered DataFrame.
 
 5. **Data Filtering**:
-   - Create a function named `filter_data(df, operadores, alimentos, dietas, start_date, end_date)`:
-     - Convert `start_date` and `end_date` to datetime.
-     - Filter the DataFrame based on date range and the selection criteria for operators (`OPERADOR`), food types (`ALIMENTO`), and diets (`NOME`).
+   - Function: `filter_data(df, operadores, alimentos, dietas, start_date, end_date)`
+     - Filter the DataFrame based on date range, operators (`OPERADOR`), food types (`ALIMENTO`), and diets (`NOME`).
      - Return the filtered DataFrame.
 
 6. **Histogram Creation**:
-   - Create a function named `create_histogram(df, title, start_date, end_date, remove_outliers=False)`:
-     - Use `matplotlib` to create a histogram based on the column 'MÉDIA PONDERADA (%)'.
-     - Apply optional outlier removal if specified.
-     - Color the bars using a gradient based on their value:
-       - Values above a threshold (3%) should be colored with varying intensity of red.
-       - Values below the threshold should be colored green.
-     - Set appropriate labels, grid lines, and add a vertical dashed line at the 3% value.
-     - Include text in the footer of the histogram detailing the analysis period, the total number of batches, and the generation timestamp.
-     - Return the figure object.
+   - Function: `create_histogram(df, title, start_date, end_date, remove_outliers=False)`
+     - Use `matplotlib` to create a histogram of 'MÉDIA PONDERADA (%)'.
+     - Optionally apply outlier removal.
+     - Color bars based on value:
+       - Values >= 3% are red, with increasing intensity.
+       - Values < 3% are green, based on proximity to zero.
+     - Set labels, grid lines, and a vertical dashed line at 3%.
+     - Add footer details for analysis period, total batches, and generation timestamp.
+     - Return the figure.
 
-7. **Image Saving and Download Link**:
-   - Create a function named `save_histogram_as_image(fig)`:
-     - Save the histogram figure as a PNG file and return an HTML link for downloading the image.
+7. **Save Histogram and Statistics**:
+   - Function: `save_histogram_as_image(fig)`
+     - Save the histogram as a PNG and provide a link to download it.
 
-8. **Statistics Table Creation**:
-   - Create a function named `save_statistics_as_csv(stats_df)`:
-     - Save a DataFrame containing statistics to a CSV file and return an HTML link for downloading the file.
+   - Function: `save_statistics_as_csv(stats_df)`
+     - Save statistics as a CSV and provide a link for download.
 
-9. **Streamlit User Interface**:
-   - Define a `main()` function:
-     - Set up the Streamlit page configuration with an appropriate title and layout.
-     - Use two columns: one for the analysis settings and one for displaying results.
-     - Allow the user to upload an Excel file and set analysis parameters:
-       - Sliders to set relative weights for each type of food (`TIPO`).
+8. **Streamlit User Interface**:
+   - Function: `main()`
+     - Set up the page with an appropriate title and layout.
+     - Use two columns for analysis settings and displaying results.
+     - Allow file upload and set analysis parameters:
+       - Sliders for setting relative weights for `TIPO`.
        - Multi-selection for operators, food types, and diets.
-       - Date input for selecting the analysis period.
-       - Checkbox to allow outlier removal.
-       - Button to initiate the analysis.
-     - Upon clicking the "Generate" button:
-       - Load and filter the data based on user inputs.
-       - If the filtered data is not empty:
-         - Calculate the weighted average of percentage differences considering the relative weights.
-         - Generate a histogram using the weighted averages.
-         - Display the histogram and offer the option to download it as a PNG.
-         - Create and display a table of relevant statistics, with the option to download it as a CSV file.
-         - The table should include statistics both **with** and **without** outliers, such as:
-           - Number of batches.
-           - Mean, median, and counts for different percentage ranges (e.g., between 3% and 5%, above 7%).
+       - Date selection for analysis period.
+       - Checkbox to remove outliers.
+       - Button to start analysis.
+     - After clicking "Generate":
+       - Load and filter data.
+       - Calculate the weighted average.
+       - Generate and display histogram.
+       - Show options to download PNG and CSV.
+       - Include tables of statistics with/without outliers.
 
-10. **Function Calls**:
-    - Ensure the `main()` function is called when the script runs, using:
-      ```python
-      if __name__ == "__main__":
-          main()
-      ```
+9. **Function Calls**:
+   - Ensure the `main()` function is called using:
+     ```python
+     if __name__ == "__main__":
+         main()
+     ```
+
+10. **General Requirements**:
+    - Use consistent formatting and add docstrings to all functions.
+    - Display warnings for incorrect/missing inputs.
+    - Ensure timestamps are generated in Brasília time.
+
+### Running the Application
+To run the app:
+```bash
+streamlit run batidas.py
+```
 
 11. **General Requirements**:
     - Use consistent formatting and add docstrings to all functions explaining their purpose, input parameters, and outputs.
