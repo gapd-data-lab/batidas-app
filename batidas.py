@@ -149,11 +149,22 @@ def create_histogram(df, title, start_date, end_date, remove_outliers=False):
     ax.set_title(title)
     
     # Adicionar linha vertical no valor 3 com estilo tracejado
+    # Adicionar linha de tolerância máxima
     ax.axvline(x=3, color='green', linestyle='--', linewidth=2, label='Tolerância Máxima (3%)')
-    
-    # Adicionar legenda explicativa
-    ax.legend(loc='upper right')
-    
+
+    # Ajustar a posição e o estilo da legenda utilizando os mesmos parâmetros da tabela de pesos
+    ax.legend(
+        loc='upper right',
+        fontsize=8,
+        frameon=True,
+        facecolor='lightgrey',
+        edgecolor='black',
+        fancybox=True,
+        framealpha=0.5,
+        bbox_to_anchor=(0.955, 0.95),  # Ajustando a posição para corresponder aos parâmetros da tabela de pesos
+        bbox_transform=ax.transAxes
+    )
+
     # Configurar grid
     ax.grid(axis='y', linestyle='--', linewidth=0.7)
     ax.set_axisbelow(True)  # Colocar o grid atrás das barras
@@ -216,6 +227,7 @@ def save_statistics_as_csv(stats_df):
     return href
 
 def main():
+    # Configuração básica do Streamlit
     st.set_page_config(page_title="Análise de Dados - Histograma", layout="wide")
     
     col1, col2 = st.columns([1, 3])
@@ -281,18 +293,28 @@ def main():
                                        start_date,
                                        end_date,
                                        remover_outliers)
+                
+                # Ajustar o layout do gráfico para aumentar a área livre
+                fig.subplots_adjust(right=0.95)
+                
+                # Adicionar pesos relativos no lado direito da área livre do gráfico, com alinhamento à direita e fundo acinzentado
+                pesos_text = "Pesos relativos dos tipos de alimento:\n"
+                pesos_text += "\n".join([f"{tipo:>20}: {peso:>4.1f}" for tipo, peso in pesos_relativos.items()])
+                fig.text(0.9, 0.85, pesos_text, ha='right', fontsize=8, va='top', linespacing=1.5,
+                        bbox=dict(facecolor='lightgrey', alpha=0.5, boxstyle='round,pad=0.5'))  # Adicionado fundo acinzentado
+
+                
                 st.pyplot(fig)
                 
                 # Adicionar opção para salvar o histograma
                 st.markdown(save_histogram_as_image(fig), unsafe_allow_html=True)
 
-                # Correção da tabela de estatísticas
+                # Criação e exibição da tabela de estatísticas
                 st.write("### Estatísticas Principais das Diferenças Percentuais")
-
                 # Criar o DataFrame sem outliers
                 weighted_average_df_no_outliers = remove_outliers_from_df(weighted_average_df, 'MÉDIA PONDERADA (%)')
-
-                # Atualização do stats_data para incluir os dados sem outliers
+                
+                # Atualização do stats_data para incluir os dados com e sem outliers
                 stats_data = {
                     'Estatística': [
                         'Número de Batidas', 
@@ -317,24 +339,27 @@ def main():
                         ((weighted_average_df_no_outliers['MÉDIA PONDERADA (%)'] >= 3) & (weighted_average_df_no_outliers['MÉDIA PONDERADA (%)'] < 5)).sum(),
                         ((weighted_average_df_no_outliers['MÉDIA PONDERADA (%)'] >= 5) & (weighted_average_df_no_outliers['MÉDIA PONDERADA (%)'] < 7)).sum(),
                         (weighted_average_df_no_outliers['MÉDIA PONDERADA (%)'] >= 7).sum()
-                    ],
-                    'Percentual (%)': [
-                        '-',
-                        '-',
-                        '-',
-                        f"{((weighted_average_df['MÉDIA PONDERADA (%)'] >= 3) & (weighted_average_df['MÉDIA PONDERADA (%)'] < 5)).mean() * 100:.2f}%",
-                        f"{((weighted_average_df['MÉDIA PONDERADA (%)'] >= 5) & (weighted_average_df['MÉDIA PONDERADA (%)'] < 7)).mean() * 100:.2f}%",
-                        f"{(weighted_average_df['MÉDIA PONDERADA (%)'] >= 7).mean() * 100:.2f}%"
                     ]
                 }
 
-                # Criação do DataFrame de estatísticas
                 stats_df = pd.DataFrame(stats_data)
                 st.write(stats_df)
 
-                # Adicionar opção para salvar as estatísticas como CSV
-                st.markdown(save_statistics_as_csv(stats_df), unsafe_allow_html=True)
+                # Adicionar a tabela dos pesos relativos ao lado da tabela de estatísticas
+                st.write("### Pesos Relativos dos Tipos de Alimento")
+                pesos_df = pd.DataFrame(list(pesos_relativos.items()), columns=['Tipo de Alimento', 'Peso Relativo'])
+                st.write(pesos_df)
 
+                # Adicionar data de geração do relatório
+                data_geracao = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                stats_df['Data de Geração'] = data_geracao
+                pesos_df['Data de Geração'] = data_geracao
+
+                # Concatenar dados das estatísticas e pesos relativos para o download
+                combined_df = pd.concat([stats_df, pesos_df], ignore_index=True, sort=False)
+
+                # Adicionar opção para salvar as estatísticas como CSV
+                st.markdown(save_statistics_as_csv(combined_df), unsafe_allow_html=True)
 
                 if remover_outliers:
                     st.info("Nota: Outliers foram removidos do histograma. Isso significa que valores extremamente altos, que podem distorcer a análise, foram excluídos para fornecer uma visão mais representativa dos dados.")
