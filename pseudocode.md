@@ -1,86 +1,112 @@
 # Pseudocode for Data Analysis Application using Streamlit
 
 ## 1. **Import Dependencies**:
-   - Import required libraries: Streamlit, Pandas, Numpy, Matplotlib, Datetime, IO, Base64, Pytz.
+   - Import required libraries:
+     - `streamlit as st` for user interface development.
+     - `pandas as pd` and `numpy as np` for data manipulation.
+     - `matplotlib.pyplot as plt` for creating visualizations.
+     - `matplotlib.colors` and `matplotlib.ticker` for customization of the visualizations.
+     - `datetime`, `pytz`, `io`, `base64`, `yaml` for specific functionalities related to time management, data export, and configuration loading.
 
-## 2. **Define Functions**:
+## 2. **Load Configuration**:
+   - Function: `read_config(config_file='config.yaml')`
+     - Load the configuration settings from an external YAML file.
+     - Return a dictionary containing all configuration values.
+     - Handle cases where the file is missing or contains errors.
 
-   a. `load_and_process_data(uploaded_file)`:
-   - Load Excel file (`.xlsx`), skipping the first 2 rows.
-   - Remove the first column as it is irrelevant.
-   - Ensure 'DIFERENÇA (%)' column is present and convert its values to numeric.
-   - Convert 'DATA' column to datetime format for filtering.
-   - Return the processed DataFrame.
+## 3. **Define Functions**:
 
-   b. `calculate_weighted_average_with_weights(df, pesos_relativos)`:
-   - Extract specific columns: 'PREVISTO (KG)', 'REALIZADO (KG)', and 'DIFERENÇA (%)'.
-   - Calculate the absolute value of 'DIFERENÇA (%)' for each row.
-   - Assign relative weights for each 'TIPO' of food based on user inputs (`pesos_relativos`).
-   - Calculate the adjusted planned quantity (`PESO AJUSTADO`) by multiplying 'PREVISTO (KG)' by the relative weight (`PESO RELATIVO`).
-   - Group data by 'COD. BATIDA'.
-   - Calculate the contribution for each ingredient using `PESO AJUSTADO * DIFERENÇA (%)`.
-   - Calculate the weighted average by dividing the sum of contributions by the total adjusted planned quantity for each batch.
-   - Return a DataFrame containing the weighted averages for each batch.
+   a. **`load_and_process_data(uploaded_file)`**:
+   - Load the Excel file (`.xlsx`) provided by the user, skipping rows as specified in the configuration (`skip_rows`).
+   - If specified, remove the first column (`remove_first_column`).
+   - Check if all required columns, such as `'DIFERENÇA (%)'`, are present; raise an error if any are missing.
+   - Convert the `'DATA'` column to datetime format to facilitate date filtering.
+   - Return the processed DataFrame or an error message if data issues are detected.
 
-   c. `remove_outliers_from_df(df, column)`:
+   b. **`find_correct_columns(df, config)`**:
+   - Identify the correct indices for the required columns (`PREVISTO (KG)`, `REALIZADO (KG)`, `DIFERENÇA (%)`).
+   - Extract indices based on column names from the configuration file.
+   - Return a dictionary with column indices, raising an error if the structure does not match expectations.
+
+   c. **`calculate_weighted_average_with_weights(df, pesos_relativos, config)`**:
+   - Convert the necessary columns to numeric to handle missing or invalid values (`errors='coerce'`).
+   - Calculate the absolute value of `'DIFERENÇA (%)'`.
+   - Map relative weights (`PESO RELATIVO`) to each `TIPO` using user inputs.
+   - Calculate the adjusted planned quantity (`PESO AJUSTADO`) as `PREVISTO (KG) * PESO RELATIVO`.
+   - Group by `'COD. BATIDA'` to aggregate the adjusted planned quantities and contributions.
+   - Calculate the weighted average for each group by dividing the total contributions by total adjusted quantities.
+   - Return a DataFrame containing the weighted averages, ensuring all calculations are accurate.
+
+   d. **`remove_outliers_from_df(df, column)`**:
    - Calculate the interquartile range (IQR) using Q1 and Q3.
-   - Determine the upper bound for detecting outliers as `Q3 + 1.5 * IQR`.
-   - Return a DataFrame excluding rows with values above the upper bound.
-
-   d. `filter_data(df, operadores, alimentos, dietas, start_date, end_date)`:
-   - Convert `start_date` and `end_date` to datetime format.
-   - Filter the data based on the provided date range.
-   - Apply additional filters for 'OPERADOR', 'ALIMENTO', and 'NOME' fields.
+   - Determine the upper bound for outliers as `Q3 + 1.5 * IQR`.
+   - Filter out rows where the value in the specified column exceeds this upper bound.
    - Return the filtered DataFrame.
 
-   e. `create_histogram(df, title, start_date, end_date, remove_outliers=False)`:
-   - Optionally remove outliers from the 'MÉDIA PONDERADA (%)' column using `remove_outliers_from_df()`.
-   - Use Matplotlib to create a histogram from the 'MÉDIA PONDERADA (%)' column.
-   - Apply a color scheme to histogram bars:
-     - Color bars red for values greater than or equal to 3%, with varying intensity.
-     - Color bars green for values below 3%, with intensity based on proximity to 0.
-   - Set appropriate labels, add a vertical dashed line at 3% to indicate a threshold, and add grid lines.
-   - Add footer information including the analysis period, the total number of batches, and the generation timestamp in Brasília time.
-   - Return the figure object.
+   e. **`filter_data(df, operadores, alimentos, dietas, start_date, end_date)`**:
+   - Convert `start_date` and `end_date` to datetime format.
+   - Filter data based on the provided date range.
+   - Further filter the data based on the user-selected operators (`OPERADOR`), food types (`ALIMENTO`), and diets (`NOME`).
+   - Return the filtered DataFrame, ensuring no data is excluded incorrectly.
 
-   f. `save_histogram_as_image(fig)`:
+   f. **`create_histogram(df, start_date, end_date, remove_outliers, pesos_relativos)`**:
+   - If `remove_outliers` is `True`, call `remove_outliers_from_df()` on the `'MÉDIA PONDERADA (%)'` column.
+   - Use `matplotlib` to create a histogram of `'MÉDIA PONDERADA (%)'`.
+   - Calculate histogram bins using the Freedman-Diaconis rule for optimal visualization.
+   - Apply a color scheme to the bars:
+     - Color bars red for values greater than or equal to the tolerance threshold (from configuration), with increasing intensity based on proximity.
+     - Color bars green for values below the threshold.
+   - Set labels for axes and add a vertical dashed line to indicate the tolerance limit.
+   - Add footer information, including:
+     - Analysis period (`start_date` to `end_date`).
+     - Total number of batches analyzed.
+     - Generation timestamp using Brasília time.
+   - Display relative weights (`PESO RELATIVO`) for different food types on the right-hand side of the histogram.
+   - Return the figure.
+
+   g. **`save_histogram_as_image(fig)`**:
    - Save the histogram figure as a PNG file using a `BytesIO` buffer.
-   - Generate an HTML link for downloading the image.
-   - Return the download link.
+   - Encode the image as Base64 and generate an HTML link for downloading the image.
+   - Return the download link for Streamlit display.
 
-   g. `save_statistics_as_csv(stats_df)`:
+   h. **`save_statistics_as_csv(stats_df)`**:
    - Save a DataFrame containing calculated statistics as a CSV file.
-   - Generate an HTML link for downloading the CSV.
+   - Encode the CSV as Base64 and generate an HTML link for downloading.
    - Return the download link.
 
-## 3. **Main Function (`main()`)**:
+## 4. **Create Statistics Dataframe (`create_statistics_dataframe(weighted_average_df, remove_outliers=False)`)**:
+   - Create a copy of the DataFrame to avoid modifying the original data.
+   - Calculate statistical measures like mean, median, and counts of differences in various ranges.
+   - If `remove_outliers` is `True`, filter out outliers before calculating statistics.
+   - Return a DataFrame containing the main statistics.
 
-   - Set up Streamlit page configuration with a title and layout.
-   - Create two columns: one for analysis settings and one for displaying results.
+## 5. **Main Function (`main()`)**:
 
-   **Settings Column**:
-   - Upload an Excel file.
-   - Call `load_and_process_data()` to process the uploaded file.
-   - If the data loads successfully:
-     - Display sliders for setting relative weights for each type of food (`TIPO`).
-     - Display selection options for filtering: operators (`OPERADOR`), food types (`ALIMENTO`), and diets (`NOME`).
-     - Provide date inputs for selecting the analysis period (`start_date` and `end_date`).
-     - Include a checkbox to allow outlier removal.
-     - Display a button labeled "Generate" to initiate the analysis.
+   - Set up the Streamlit page configuration with a title and a "wide" layout.
+   - Create two main columns for the user interface:
+     - **Settings Column**:
+       - Allow users to upload an Excel file (`.xlsx`).
+       - Call `load_and_process_data()` to load and verify the data.
+       - If data loads successfully:
+         - Display sliders for setting relative weights (`PESO RELATIVO`) for each `TIPO`.
+         - Provide multiselect options for filtering by `OPERADOR`, `ALIMENTO`, and `NOME`.
+         - Allow date range selection for analysis.
+         - Add a checkbox to remove outliers before analysis.
+         - Include a "Generate" button to initiate the analysis.
+     - **Results Column**:
+       - If the "Generate" button is clicked:
+         - Filter the data using `filter_data()` based on user selections.
+         - If the filtered dataset is not empty:
+           - Calculate weighted averages using `calculate_weighted_average_with_weights()`.
+           - Create a histogram using `create_histogram()`.
+           - Display the histogram using `st.pyplot()`.
+           - Offer a download link for the histogram (`save_histogram_as_image()`).
+           - Generate a DataFrame of main statistics using `create_statistics_dataframe()`.
+           - Provide the option to download the statistics (`save_statistics_as_csv()`).
+           - Display a message indicating outliers were removed, if applicable.
 
-   **Results Column**:
-   - If the "Generate" button is clicked:
-     - Filter the data using `filter_data()` based on user selections.
-     - If the filtered dataset is not empty:
-       - Calculate weighted averages for percentage differences using `calculate_weighted_average_with_weights()`.
-       - Create a histogram of the weighted averages using `create_histogram()`.
-       - Display the histogram using Streamlit's `st.pyplot()` function.
-       - Offer the option to download the histogram as a PNG file using `save_histogram_as_image()`.
-       - Create and display a table of relevant statistics (both with and without outliers).
-       - Provide an option to download the statistics as a CSV file using `save_statistics_as_csv()`.
-
-## 4. **Entry Point**:
-   - Ensure `main()` is called when the script runs:
+## 6. **Entry Point**:
+   - Ensure the `main()` function is called when the script runs:
    ```python
    if __name__ == "__main__":
        main()
