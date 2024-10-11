@@ -1,0 +1,89 @@
+excel_columns:
+  date: 'DATA'
+  cod_batida: 'COD. BATIDA'
+  nome: 'NOME'
+  alimento: 'ALIMENTO'
+  tipo: 'TIPO'
+  previsto: 'PREVISTO (KG)'
+  realizado: 'REALIZADO (KG)'
+  diferenca_percentual: 'DIFERENÇA (%)'
+  operator: 'OPERADOR'
+
+# Configurações de análise
+analysis:
+  default_weight: 1.0
+  tolerance_threshold: 3
+  outlier_threshold: 1.5
+  skip_rows: 2
+  remove_first_column: true
+
+# Configurações de interface do usuário
+ui:
+  page_title: "Análise de Dados - Histograma"
+  layout: "wide"
+  file_uploader:
+    label: "Escolha o arquivo Excel (.xlsx)"
+    allowed_types: ["xlsx"]
+  analysis_config_header: "Configurações da Análise"
+  food_weights_subheader: "Pesos Relativos dos Tipos de Alimento"
+  date_input:
+    label: "Selecione o Período de Datas:"
+  multiselect:
+    food_label: "Escolha os Alimentos:"
+    diet_label: "Escolha as Dietas:"
+    operator_label: "Escolha os Operadores:"
+  remove_outliers:
+    label: "Remover outliers do histograma"
+    help: "Remover valores extremos que podem distorcer a análise."
+  generate_button: "Gerar"
+  results_header: "Resultados da Análise - Confinamento"
+  statistics_title: "### Estatísticas Principais das Diferenças Percentuais"
+  outliers_removed_message: "Outliers foram removidos do histograma para melhor visualização."
+
+# Configurações de exportação
+export:
+  histogram:
+    format: "png"
+    dpi: 300
+  statistics:
+    format: "csv"
+
+# Configurações de timezone
+timezone: "America/Sao_Paulo"
+
+# Configurações de visualização
+visualization:
+  histogram_figsize: [12, 8]
+  histogram_title: "Distribuição da Média Ponderada da Diferença Percentual - Confinamento"
+  color_threshold: 3
+  grid_style:
+    axis: 'y'
+    linestyle: '--'
+    linewidth: 0.7
+  vertical_line:
+    color: 'green'
+    linestyle: '--'
+    linewidth: 2
+    label: "Tolerância Máxima"
+  legend:
+    location: 'upper right'
+    fontsize: 8
+    frameon: true
+    facecolor: 'lightgreen'
+    edgecolor: 'black'
+    fancybox: true
+    framealpha: 0.5
+    bbox_to_anchor: [0.91, 0.9]
+  weights_table:
+    position: [0.9, 0.70]
+    fontsize: 8
+    facecolor: 'lightgrey'
+    alpha: 0.5
+    boxstyle: 'round,pad=0.5'
+  footer:
+    fontsize: 10
+  subplot_adjust:
+    left: 0.05   # ajustar a margem esquerda
+    right: 0.95  # dar espaço à tabela de pesos
+    bottom: 0.1
+    top: 0.9     # ajustar a margem superior
