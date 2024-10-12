@@ -36,7 +36,7 @@ analysis:
 # ----------------------------------------------------------------------
 slider:
   min_value: 0.5                          # Valor mínimo permitido para os sliders
-  max_value: 5.0                          # Valor máximo permitido para os sliders
+  max_value: 3.5                          # Valor máximo permitido para os sliders
   step: 0.1                               # Incremento de ajuste para os sliders (precisão)
 
 # ----------------------------------------------------------------------
@@ -76,8 +76,8 @@ ui:
   statistics_title: "### Estatísticas principais" # Título da seção de estatísticas
   ui:
   results_header: "Resultados da Análise"
-  statistics_title: "Estatísticas Principais das Diferenças Percentuais"
-  food_weights_subheader: "Pesos Relativos"
+  statistics_title: "Estatísticas principais das diferenças percentuais"
+  food_weights_subheader: "Pesos relativos"
   outliers_removed_message: "Outliers foram removidos do histograma para melhor visualização."  # Mensagem ao remover outliers
 
 # ----------------------------------------------------------------------
