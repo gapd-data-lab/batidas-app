@@ -35,7 +35,7 @@ analysis:
 # CONFIGURAÇÃO DOS SLIDERS DE PESOS RELATIVOS
 # ----------------------------------------------------------------------
 slider:
-  min_value: 0.0                          # Valor mínimo permitido para os sliders
+  min_value: 0.5                          # Valor mínimo permitido para os sliders
   max_value: 5.0                          # Valor máximo permitido para os sliders
   step: 0.1                               # Incremento de ajuste para os sliders (precisão)
 
