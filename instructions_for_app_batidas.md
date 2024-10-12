@@ -12,8 +12,8 @@ Write a Python program using the **Streamlit** framework to create a web-based d
 2. **Configuration Management via YAML**:
    - The configuration file should be managed through an external YAML file (`config.yaml`).
    - The file should include:
-     - **Excel Column Mapping** (`excel_columns`): Names of the columns used in the loaded dataset.
-     - **Analysis Settings** (`analysis`): Default weights, tolerance thresholds, outlier handling, and data processing instructions.
+     - **Excel Column Mapping** (`excel_columns`): Names of the columns used in the loaded dataset, including details about **duplicated columns** (`PREVISTO (KG).1` and `REALIZADO (KG).1`). These columns need special handling to avoid confusion during analysis.
+     - **Analysis Settings** (`analysis`): Default weights, tolerance thresholds, outlier handling, and data processing instructions, including how to handle **missing values (NaN)** to ensure consistent processing.
      - **User Interface Settings** (`ui`): Titles, labels, and configuration options for the interface.
      - **Visualization Settings** (`visualization`): Histogram size, grid style, colors, legends, and layout adjustments.
 
@@ -23,6 +23,7 @@ Write a Python program using the **Streamlit** framework to create a web-based d
      - Removes the first column if configured.
      - Ensures that essential columns, such as 'DIFERENÇA (%)', are present.
      - Converts the 'DATA' column to datetime format for data filtering.
+     - **Validates duplicated columns** (`PREVISTO (KG).1`, `REALIZADO (KG).1`) to ensure consistency.
      - Returns a processed Pandas DataFrame or displays an error message if necessary.
 
 4. **Column Identification**:
@@ -35,6 +36,7 @@ Write a Python program using the **Streamlit** framework to create a web-based d
      - Applies relative weights to each food type (`TIPO`) as provided by the user.
      - Calculates the adjusted planned amount (`PESO AJUSTADO`).
      - Groups the data by 'COD. BATIDA' and calculates the weighted average of the differences.
+     - **Includes robust error messages** when essential columns are missing or values cannot be processed.
      - Returns a DataFrame containing the weighted averages.
 
 6. **Outlier Removal**:
@@ -57,6 +59,7 @@ Write a Python program using the **Streamlit** framework to create a web-based d
      - Configures labels, gridlines, and adds a dashed vertical line representing the tolerance threshold.
      - Adds footer details about the analysis period, total batches, and a timestamp.
      - Displays relative weights for each food type on the right side of the histogram.
+     - **Adds a legend** that clearly explains the color coding of the histogram bars.
      - Returns the generated figure.
 
 9. **Saving Histograms and Statistics**:
@@ -65,6 +68,7 @@ Write a Python program using the **Streamlit** framework to create a web-based d
 
    - Function: `save_statistics_as_csv(stats_df)`
      - Saves the statistics as a CSV file and generates a download link.
+     - **Allow users to choose different file formats** (e.g., PDF for graphs and Excel for statistics) to increase accessibility.
 
 10. **User Interface with Streamlit**:
     - Function: `main()`
@@ -72,8 +76,8 @@ Write a Python program using the **Streamlit** framework to create a web-based d
       - Creates two columns for analysis parameters and results display.
       - Includes a file uploader for Excel files, allowing only `.xlsx`.
       - Adds analysis parameters, such as:
-        - **Relative Weights**: Sliders to adjust weights for `TIPO`.
-        - **Filtering**: Multiselect inputs for operators, food types, diets, and date range selection.
+        - **Relative Weights**: Sliders to adjust weights for `TIPO`. Consider adding **two sliders for each type of food**: one for default weight and one for an additional adjustment factor to provide a more refined control.
+        - **Filtering**: Multiselect inputs for operators, food types, diets, and date range selection. Consider setting **default start and end dates** in the YAML configuration to simplify user interaction.
         - **Outlier Removal**: Checkbox to remove outliers from the analysis.
       - Adds a "Generate" button to start the analysis.
       - Upon clicking "Generate":
@@ -120,4 +124,4 @@ Remember to deactivate the virtual environment when you're done:
 
 ```bash
 deactivate
-``` 
+```

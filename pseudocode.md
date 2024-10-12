@@ -8,16 +8,17 @@
      - `yaml`: Configuration loading from YAML.
      - `pytz`: Timezone management.
      - Other supporting modules like `datetime`, `io`, `base64` for file handling and exporting.
+     - Include `matplotlib.colors` and `matplotlib.ticker` for advanced visualization customization.
 
 ## 2. **Load Configuration**
    - Function: `read_config(config_file="config.yaml")`
      - Load configuration from the YAML file.
      - Return a dictionary with the following sections:
-       - **Excel Column Mapping (`excel_columns`)**: Maps column names in the dataset.
-       - **Analysis Parameters (`analysis`)**: Sets default weights, tolerance thresholds, and outlier parameters.
+       - **Excel Column Mapping (`excel_columns`)**: Maps column names in the dataset, including details on **duplicated columns** (`PREVISTO (KG).1` and `REALIZADO (KG).1`) that need special handling to ensure consistency.
+       - **Analysis Parameters (`analysis`)**: Sets default weights, tolerance thresholds, and outlier parameters, including **how to handle missing values (`NaN`)** to ensure consistent data processing.
        - **UI Configuration (`ui`)**: Defines text, titles, and labels for the user interface.
        - **Visualization Settings (`visualization`)**: Adjusts grid lines, color thresholds, and legend settings.
-       - **Export Settings (`export`)**: Defines formats for image and CSV exports.
+       - **Export Settings (`export`)**: Defines formats for image and CSV exports, including options for **multiple formats** like PDF for graphs and Excel for statistics.
        - **Timezone (`timezone`)**: Configures the timezone for timestamps (e.g., `America/Sao_Paulo`).
 
 ## 3. **Load and Process Data**
@@ -26,8 +27,9 @@
      - Process the file by:
        1. **Skipping Rows**: Skip rows as configured in the `config.yaml` file (parameter: `skip_rows`).
        2. **Column Validation**: Ensure all required columns (as defined in `excel_columns`) are present in the file.
-       3. **Convert 'DATA' Column to Datetime**: Use `pandas.to_datetime()` to handle date formats.
-       4. **Numeric Conversion**: Convert columns like `'PREVISTO (KG)'`, `'REALIZADO (KG)'`, and `'DIFERENÇA (%)'` to numeric.
+       3. **Validate Duplicated Columns**: Ensure that **duplicated columns** (`PREVISTO (KG).1`, `REALIZADO (KG).1`) are consistent and properly formatted.
+       4. **Convert 'DATA' Column to Datetime**: Use `pandas.to_datetime()` to handle date formats.
+       5. **Numeric Conversion**: Convert columns like `'PREVISTO (KG)'`, `'REALIZADO (KG)'`, and `'DIFERENÇA (%)'` to numeric.
      - Handle errors if the file structure is invalid or columns are missing.
      - Return the processed DataFrame or an error message.
 
@@ -45,6 +47,7 @@
        3. **Calculate Adjusted Planned Quantity**: Multiply the planned quantity (`PREVISTO (KG)`) by the relative weight (`PESO RELATIVO`).
        4. **Calculate Contribution**: Multiply the absolute percentage difference by the adjusted planned quantity.
        5. **Group by 'COD. BATIDA'**: Calculate the weighted average for each batch (`COD. BATIDA`).
+       6. **Error Handling**: Include **robust error messages** if essential columns are missing or values cannot be processed.
      - Return a DataFrame containing the calculated weighted averages per batch.
 
 ## 6. **Outlier Removal**
@@ -73,8 +76,9 @@
        2. **Define Bins**: Use the Freedman-Diaconis rule to calculate histogram bin width.
        3. **Color Bars**: Color the histogram bars based on percentage difference thresholds (green for within tolerance, red for exceeding tolerance).
        4. **Add Vertical Line**: Add a dashed vertical line at the tolerance limit for visual reference.
-       5. **Footer**: Add analysis details like date range, number of batches, and the current timestamp.
-       6. **Weights Table**: Display the relative weights for each food type next to the histogram.
+       5. **Add Legend**: Include a **legend** to explain the color coding of the histogram bars.
+       6. **Footer**: Add analysis details like date range, number of batches, and the current timestamp.
+       7. **Weights Table**: Display the relative weights for each food type next to the histogram.
      - Return the created figure.
 
 ## 9. **Statistics Calculation and Export**
@@ -95,14 +99,15 @@
    - Function: `save_statistics_as_csv(stats_df)`
      - Save the calculated statistics as a CSV file.
      - Encode the file in Base64 format and return a downloadable HTML link.
+     - Allow users to choose different file formats, such as PDF for graphs or Excel for statistics, for better accessibility.
 
 ## 10. **User Interface with Streamlit**
 
 ### a. **UI Layout and Inputs**
    - Set up the Streamlit interface with a "wide" layout:
      1. **File Uploader**: Allow the user to upload an Excel file (`.xlsx` format).
-     2. **Sliders for Relative Weights**: Add sliders for adjusting relative weights of food types (`TIPO`), with minimum, maximum, and step values defined in `config.yaml`.
-     3. **Multiselect Inputs**: Provide options for selecting operators, foods, diets, and a date range.
+     2. **Sliders for Relative Weights**: Add sliders for adjusting relative weights of food types (`TIPO`), with minimum, maximum, and step values defined in `config.yaml`. Consider adding **two sliders for each type**: one for default weight and one for an additional adjustment factor.
+     3. **Multiselect Inputs**: Provide options for selecting operators, foods, diets, and a date range. Consider allowing **default start and end dates** to be defined in `config.yaml`.
      4. **Outlier Removal Checkbox**: Add a checkbox to enable or disable outlier removal.
      5. **Generate Button**: Add a "Generate" button to trigger the data analysis and visualization.
 
