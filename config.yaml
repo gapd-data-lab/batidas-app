@@ -55,12 +55,12 @@ weighted_average:
 # CONFIGURAÇÃO DA INTERFACE DO USUÁRIO
 # ----------------------------------------------------------------------
 ui:
-  page_title: "Análise de Dados - Histograma"    # Título da página na interface web
+  page_title: "Análise de Dados de Confinamento - Histograma de Média Ponderada"    # Título da página na interface web
   layout: "wide"                                 # Layout da página (wide, centered, etc.)
   file_uploader:
     label: "Escolha o arquivo Excel (.xlsx)"     # Texto de instrução para o upload do arquivo Excel
     allowed_types: ["xlsx"]                      # Tipos de arquivo permitidos para upload
-  analysis_config_header: "Configurações da Análise"  # Cabeçalho da seção de configuração
+  analysis_config_header: "Configurações:"  # Cabeçalho da seção de configuração
   food_weights_subheader: "Pesos relativos"      # Texto dos sliders
   date_input:
     label: "Selecione o período:"                # Texto de instrução para seleção de datas
@@ -75,7 +75,7 @@ ui:
   results_header: "Resultados da Análise - Confinamento"  # Título da seção de resultados
   statistics_title: "### Estatísticas principais" # Título da seção de estatísticas
   ui:
-  results_header: "Resultados da Análise"
+  results_header: "Resultados:"
   statistics_title: "Estatísticas principais das diferenças percentuais"
   food_weights_subheader: "Pesos relativos"
   outliers_removed_message: "Outliers foram removidos do histograma para melhor visualização."  # Mensagem ao remover outliers
