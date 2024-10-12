@@ -597,7 +597,6 @@ def main():
             if df_filtered.empty:
                 st.warning("Não há dados suficientes para gerar a análise.")
             else:
-
                 # Forçar a conversão de strings para números em todas as colunas numéricas
                 df_filtered[['PREVISTO (KG)', 'REALIZADO (KG)', 'PREVISTO (KG).1', 'REALIZADO (KG).1', 'DIFERENÇA (KG)', 'DIFERENÇA (%)']] = df_filtered[['PREVISTO (KG)', 'REALIZADO (KG)', 'PREVISTO (KG).1', 'REALIZADO (KG).1', 'DIFERENÇA (KG)', 'DIFERENÇA (%)']].apply(pd.to_numeric, errors='coerce')
                 
@@ -612,15 +611,20 @@ def main():
                     # Adicionar opção para salvar o histograma
                     st.markdown(save_histogram_as_image(fig), unsafe_allow_html=True)
 
-                    # Exibir estatísticas
-                    st.subheader(config['ui']['statistics_title'])
-                    stats_df = create_statistics_dataframe(weighted_average_df, remover_outliers)
-                    st.write(stats_df)
+                    # Criar duas colunas para exibir as tabelas lado a lado
+                    col1, col2 = st.columns(2)
 
-                    # Exibir pesos relativos
-                    st.subheader(config['ui']['food_weights_subheader'])
-                    pesos_df = pd.DataFrame(list(pesos_relativos.items()), columns=['Tipo de Alimento', 'Peso Relativo'])
-                    st.write(pesos_df)
+                    # Exibir estatísticas na primeira coluna
+                    with col1:
+                        st.subheader(config['ui']['statistics_title'])
+                        stats_df = create_statistics_dataframe(weighted_average_df, remover_outliers)
+                        st.write(stats_df)
+
+                    # Exibir pesos relativos na segunda coluna
+                    with col2:
+                        st.subheader(config['ui']['food_weights_subheader'])
+                        pesos_df = pd.DataFrame(list(pesos_relativos.items()), columns=['Tipo de Alimento', 'Peso Relativo'])
+                        st.write(pesos_df)
 
                     # Adicionar data de geração e opção para download
                     data_geracao = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
