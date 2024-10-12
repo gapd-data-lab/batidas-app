@@ -86,6 +86,8 @@ ui:
 visualization:
   histogram_figsize: [12, 8]                     # Tamanho do histograma (figura) em polegadas
   histogram_title: "Distribuição da Média Ponderada da Diferença Percentual - Confinamento"  # Título do histograma
+  x_label: "média ponderada da diferença (%)"    # Rótulo do eixo X
+  y_label: "nº de batidas"                       # Rótulo do eixo Y
   color_threshold: 3                             # Limite de cor para destacar barras específicas
   grid_style:
     axis: 'y'                                    # Eixo da grade (pode ser x ou y)

@@ -478,8 +478,8 @@ def create_histogram(df, start_date, end_date, remove_outliers, pesos_relativos)
     # Colorir as barras com escala de cores
     color_histogram_bars(patches, bins)
     
-    ax.set_xlabel('Média Ponderada da Diferença (%)')
-    ax.set_ylabel('Frequência')
+    ax.set_xlabel(config['visualization']['x_label'])  # Usando o parâmetro do arquivo de configuração
+    ax.set_ylabel(config['visualization']['y_label'])  # Usando o parâmetro do arquivo de configuração
     ax.set_title(config['visualization']['histogram_title'])
     
     # Adicionar linha vertical no valor de tolerância com estilo tracejado
