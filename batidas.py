@@ -589,8 +589,8 @@ def main():
 
     with col2:
         if uploaded_file is not None and df is not None and iniciar_analise:
-            st.header("Resultados da Análise")
-            
+            st.header(config['ui']['results_header'])
+
             # Filtrar os dados
             df_filtered = filter_data(df, operadores_selecionados, alimentos_selecionados, dietas_selecionadas, start_date, end_date)
             
@@ -613,12 +613,12 @@ def main():
                     st.markdown(save_histogram_as_image(fig), unsafe_allow_html=True)
 
                     # Exibir estatísticas
-                    st.subheader("Estatísticas Principais das Diferenças Percentuais")
+                    st.subheader(config['ui']['statistics_title'])
                     stats_df = create_statistics_dataframe(weighted_average_df, remover_outliers)
                     st.write(stats_df)
 
                     # Exibir pesos relativos
-                    st.subheader("Pesos Relativos dos Tipos de Alimento")
+                    st.subheader(config['ui']['food_weights_subheader'])
                     pesos_df = pd.DataFrame(list(pesos_relativos.items()), columns=['Tipo de Alimento', 'Peso Relativo'])
                     st.write(pesos_df)
 

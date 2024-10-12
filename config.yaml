@@ -61,9 +61,9 @@ ui:
     label: "Escolha o arquivo Excel (.xlsx)"     # Texto de instrução para o upload do arquivo Excel
     allowed_types: ["xlsx"]                      # Tipos de arquivo permitidos para upload
   analysis_config_header: "Configurações da Análise"  # Cabeçalho da seção de configuração
-  food_weights_subheader: "Pesos Relativos dos Tipos de Alimento"  # Texto dos sliders
+  food_weights_subheader: "Pesos relativos"      # Texto dos sliders
   date_input:
-    label: "Selecione o Período de Datas:"       # Texto de instrução para seleção de datas
+    label: "Selecione o período:"                # Texto de instrução para seleção de datas
   multiselect:
     food_label: "Escolha os Alimentos:"          # Texto de instrução para selecionar alimentos
     diet_label: "Escolha as Dietas:"             # Texto de instrução para selecionar dietas
@@ -73,7 +73,11 @@ ui:
     help: "Remover valores extremos que podem distorcer a análise."  # Texto de ajuda sobre outliers
   generate_button: "Gerar"                       # Texto do botão de geração de resultados
   results_header: "Resultados da Análise - Confinamento"  # Título da seção de resultados
-  statistics_title: "### Estatísticas Principais das Diferenças Percentuais"  # Título da seção de estatísticas
+  statistics_title: "### Estatísticas principais" # Título da seção de estatísticas
+  ui:
+  results_header: "Resultados da Análise"
+  statistics_title: "Estatísticas Principais das Diferenças Percentuais"
+  food_weights_subheader: "Pesos Relativos"
   outliers_removed_message: "Outliers foram removidos do histograma para melhor visualização."  # Mensagem ao remover outliers
 
 # ----------------------------------------------------------------------
