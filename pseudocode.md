@@ -1,112 +1,138 @@
-# Pseudocode for Data Analysis Application using Streamlit
+# Pseudocode for Batch Data Analysis Application using Streamlit
 
-## 1. **Import Dependencies**:
-   - Import required libraries:
-     - `streamlit as st` for user interface development.
-     - `pandas as pd` and `numpy as np` for data manipulation.
-     - `matplotlib.pyplot as plt` for creating visualizations.
-     - `matplotlib.colors` and `matplotlib.ticker` for customization of the visualizations.
-     - `datetime`, `pytz`, `io`, `base64`, `yaml` for specific functionalities related to time management, data export, and configuration loading.
+## 1. **Import Dependencies**
+   - Import necessary libraries:
+     - `streamlit as st`: User interface components.
+     - `pandas as pd`: Data manipulation.
+     - `matplotlib.pyplot as plt`: Plotting histograms.
+     - `yaml`: Configuration loading from YAML.
+     - `pytz`: Timezone management.
+     - Other supporting modules like `datetime`, `io`, `base64` for file handling and exporting.
 
-## 2. **Load Configuration**:
-   - Function: `read_config(config_file='config.yaml')`
-     - Load the configuration settings from an external YAML file.
-     - Return a dictionary containing all configuration values.
-     - Handle cases where the file is missing or contains errors.
+## 2. **Load Configuration**
+   - Function: `read_config(config_file="config.yaml")`
+     - Load configuration from the YAML file.
+     - Return a dictionary with the following sections:
+       - **Excel Column Mapping (`excel_columns`)**: Maps column names in the dataset.
+       - **Analysis Parameters (`analysis`)**: Sets default weights, tolerance thresholds, and outlier parameters.
+       - **UI Configuration (`ui`)**: Defines text, titles, and labels for the user interface.
+       - **Visualization Settings (`visualization`)**: Adjusts grid lines, color thresholds, and legend settings.
+       - **Export Settings (`export`)**: Defines formats for image and CSV exports.
+       - **Timezone (`timezone`)**: Configures the timezone for timestamps (e.g., `America/Sao_Paulo`).
 
-## 3. **Define Functions**:
+## 3. **Load and Process Data**
+   - Function: `load_and_process_data(uploaded_file)`
+     - Accept an Excel file uploaded by the user.
+     - Process the file by:
+       1. **Skipping Rows**: Skip rows as configured in the `config.yaml` file (parameter: `skip_rows`).
+       2. **Column Validation**: Ensure all required columns (as defined in `excel_columns`) are present in the file.
+       3. **Convert 'DATA' Column to Datetime**: Use `pandas.to_datetime()` to handle date formats.
+       4. **Numeric Conversion**: Convert columns like `'PREVISTO (KG)'`, `'REALIZADO (KG)'`, and `'DIFERENÇA (%)'` to numeric.
+     - Handle errors if the file structure is invalid or columns are missing.
+     - Return the processed DataFrame or an error message.
 
-   a. **`load_and_process_data(uploaded_file)`**:
-   - Load the Excel file (`.xlsx`) provided by the user, skipping rows as specified in the configuration (`skip_rows`).
-   - If specified, remove the first column (`remove_first_column`).
-   - Check if all required columns, such as `'DIFERENÇA (%)'`, are present; raise an error if any are missing.
-   - Convert the `'DATA'` column to datetime format to facilitate date filtering.
-   - Return the processed DataFrame or an error message if data issues are detected.
+## 4. **Column Identification**
+   - Function: `find_correct_columns(df, config)`
+     - Identify and validate the required columns (`PREVISTO (KG)`, `REALIZADO (KG)`, `DIFERENÇA (%)`, etc.) in the dataset.
+     - Match column names from the Excel file to those specified in the configuration.
+     - Return a dictionary with column indices or raise an error if columns are missing.
 
-   b. **`find_correct_columns(df, config)`**:
-   - Identify the correct indices for the required columns (`PREVISTO (KG)`, `REALIZADO (KG)`, `DIFERENÇA (%)`).
-   - Extract indices based on column names from the configuration file.
-   - Return a dictionary with column indices, raising an error if the structure does not match expectations.
+## 5. **Weighted Average Calculation**
+   - Function: `calculate_weighted_average_with_weights(df, pesos_relativos, config)`
+     - Steps:
+       1. **Numeric Conversion**: Convert columns like `PREVISTO (KG)` and `REALIZADO (KG)` to numeric.
+       2. **Map Relative Weights**: Apply relative weights (`PESO RELATIVO`) to the `TIPO` column as per user input (via sliders).
+       3. **Calculate Adjusted Planned Quantity**: Multiply the planned quantity (`PREVISTO (KG)`) by the relative weight (`PESO RELATIVO`).
+       4. **Calculate Contribution**: Multiply the absolute percentage difference by the adjusted planned quantity.
+       5. **Group by 'COD. BATIDA'**: Calculate the weighted average for each batch (`COD. BATIDA`).
+     - Return a DataFrame containing the calculated weighted averages per batch.
 
-   c. **`calculate_weighted_average_with_weights(df, pesos_relativos, config)`**:
-   - Convert the necessary columns to numeric to handle missing or invalid values (`errors='coerce'`).
-   - Calculate the absolute value of `'DIFERENÇA (%)'`.
-   - Map relative weights (`PESO RELATIVO`) to each `TIPO` using user inputs.
-   - Calculate the adjusted planned quantity (`PESO AJUSTADO`) as `PREVISTO (KG) * PESO RELATIVO`.
-   - Group by `'COD. BATIDA'` to aggregate the adjusted planned quantities and contributions.
-   - Calculate the weighted average for each group by dividing the total contributions by total adjusted quantities.
-   - Return a DataFrame containing the weighted averages, ensuring all calculations are accurate.
+## 6. **Outlier Removal**
+   - Function: `remove_outliers_from_df(df, column)`
+     - Identify and remove outliers from the dataset using the Interquartile Range (IQR) method:
+       1. Calculate the IQR (Q3 - Q1).
+       2. Define upper and lower bounds (Q1 - 1.5 * IQR, Q3 + 1.5 * IQR).
+       3. Remove rows with values outside these bounds.
+     - Return the cleaned DataFrame.
 
-   d. **`remove_outliers_from_df(df, column)`**:
-   - Calculate the interquartile range (IQR) using Q1 and Q3.
-   - Determine the upper bound for outliers as `Q3 + 1.5 * IQR`.
-   - Filter out rows where the value in the specified column exceeds this upper bound.
-   - Return the filtered DataFrame.
+## 7. **Data Filtering**
+   - Function: `filter_data(df, operadores, alimentos, dietas, start_date, end_date)`
+     - Filter the dataset based on:
+       1. **Date Range**: Filter rows within the selected `start_date` and `end_date`.
+       2. **Operators** (`OPERADOR`): Select only the operators chosen by the user.
+       3. **Foods** (`ALIMENTO`): Select the specific food types defined by the user.
+       4. **Diets** (`NOME`): Filter data based on selected diets.
+     - Return the filtered DataFrame.
 
-   e. **`filter_data(df, operadores, alimentos, dietas, start_date, end_date)`**:
-   - Convert `start_date` and `end_date` to datetime format.
-   - Filter data based on the provided date range.
-   - Further filter the data based on the user-selected operators (`OPERADOR`), food types (`ALIMENTO`), and diets (`NOME`).
-   - Return the filtered DataFrame, ensuring no data is excluded incorrectly.
+## 8. **Histogram Creation and Customization**
 
-   f. **`create_histogram(df, start_date, end_date, remove_outliers, pesos_relativos)`**:
-   - If `remove_outliers` is `True`, call `remove_outliers_from_df()` on the `'MÉDIA PONDERADA (%)'` column.
-   - Use `matplotlib` to create a histogram of `'MÉDIA PONDERADA (%)'`.
-   - Calculate histogram bins using the Freedman-Diaconis rule for optimal visualization.
-   - Apply a color scheme to the bars:
-     - Color bars red for values greater than or equal to the tolerance threshold (from configuration), with increasing intensity based on proximity.
-     - Color bars green for values below the threshold.
-   - Set labels for axes and add a vertical dashed line to indicate the tolerance limit.
-   - Add footer information, including:
-     - Analysis period (`start_date` to `end_date`).
-     - Total number of batches analyzed.
-     - Generation timestamp using Brasília time.
-   - Display relative weights (`PESO RELATIVO`) for different food types on the right-hand side of the histogram.
-   - Return the figure.
+### a. **Create Histogram**
+   - Function: `create_histogram(df, start_date, end_date, remove_outliers, pesos_relativos)`
+     - Steps:
+       1. **Remove Outliers**: Optionally remove outliers based on the IQR method.
+       2. **Define Bins**: Use the Freedman-Diaconis rule to calculate histogram bin width.
+       3. **Color Bars**: Color the histogram bars based on percentage difference thresholds (green for within tolerance, red for exceeding tolerance).
+       4. **Add Vertical Line**: Add a dashed vertical line at the tolerance limit for visual reference.
+       5. **Footer**: Add analysis details like date range, number of batches, and the current timestamp.
+       6. **Weights Table**: Display the relative weights for each food type next to the histogram.
+     - Return the created figure.
 
-   g. **`save_histogram_as_image(fig)`**:
-   - Save the histogram figure as a PNG file using a `BytesIO` buffer.
-   - Encode the image as Base64 and generate an HTML link for downloading the image.
-   - Return the download link for Streamlit display.
+## 9. **Statistics Calculation and Export**
 
-   h. **`save_statistics_as_csv(stats_df)`**:
-   - Save a DataFrame containing calculated statistics as a CSV file.
-   - Encode the CSV as Base64 and generate an HTML link for downloading.
-   - Return the download link.
+### a. **Create Statistics DataFrame**
+   - Function: `create_statistics_dataframe(weighted_average_df, remove_outliers=False)`
+     - Calculate key statistics:
+       1. **Mean and Median**: Calculate the mean and median of the percentage differences.
+       2. **Count in Ranges**: Count how many percentage differences fall within predefined ranges (e.g., 3%-5%, 5%-7%, >7%).
+     - Return a DataFrame with the statistics.
 
-## 4. **Create Statistics Dataframe (`create_statistics_dataframe(weighted_average_df, remove_outliers=False)`)**:
-   - Create a copy of the DataFrame to avoid modifying the original data.
-   - Calculate statistical measures like mean, median, and counts of differences in various ranges.
-   - If `remove_outliers` is `True`, filter out outliers before calculating statistics.
-   - Return a DataFrame containing the main statistics.
+### b. **Save Histogram as Image**
+   - Function: `save_histogram_as_image(fig)`
+     - Save the generated histogram as a PNG image using a BytesIO buffer.
+     - Encode the image in Base64 format and return a downloadable HTML link.
 
-## 5. **Main Function (`main()`)**:
+### c. **Save Statistics as CSV**
+   - Function: `save_statistics_as_csv(stats_df)`
+     - Save the calculated statistics as a CSV file.
+     - Encode the file in Base64 format and return a downloadable HTML link.
 
-   - Set up the Streamlit page configuration with a title and a "wide" layout.
-   - Create two main columns for the user interface:
-     - **Settings Column**:
-       - Allow users to upload an Excel file (`.xlsx`).
-       - Call `load_and_process_data()` to load and verify the data.
-       - If data loads successfully:
-         - Display sliders for setting relative weights (`PESO RELATIVO`) for each `TIPO`.
-         - Provide multiselect options for filtering by `OPERADOR`, `ALIMENTO`, and `NOME`.
-         - Allow date range selection for analysis.
-         - Add a checkbox to remove outliers before analysis.
-         - Include a "Generate" button to initiate the analysis.
-     - **Results Column**:
-       - If the "Generate" button is clicked:
-         - Filter the data using `filter_data()` based on user selections.
-         - If the filtered dataset is not empty:
-           - Calculate weighted averages using `calculate_weighted_average_with_weights()`.
-           - Create a histogram using `create_histogram()`.
-           - Display the histogram using `st.pyplot()`.
-           - Offer a download link for the histogram (`save_histogram_as_image()`).
-           - Generate a DataFrame of main statistics using `create_statistics_dataframe()`.
-           - Provide the option to download the statistics (`save_statistics_as_csv()`).
-           - Display a message indicating outliers were removed, if applicable.
+## 10. **User Interface with Streamlit**
 
-## 6. **Entry Point**:
+### a. **UI Layout and Inputs**
+   - Set up the Streamlit interface with a "wide" layout:
+     1. **File Uploader**: Allow the user to upload an Excel file (`.xlsx` format).
+     2. **Sliders for Relative Weights**: Add sliders for adjusting relative weights of food types (`TIPO`), with minimum, maximum, and step values defined in `config.yaml`.
+     3. **Multiselect Inputs**: Provide options for selecting operators, foods, diets, and a date range.
+     4. **Outlier Removal Checkbox**: Add a checkbox to enable or disable outlier removal.
+     5. **Generate Button**: Add a "Generate" button to trigger the data analysis and visualization.
+
+## 11. **Execution Flow**
+
+### a. **Main Function**
+   - Function: `main()`
+     - Load configurations from `config.yaml`.
+     - Handle file upload and data processing.
+     - Display filters and inputs to the user:
+       - Sliders for adjusting relative weights.
+       - Date range, operators, foods, and diets for filtering.
+     - When the user clicks "Generate":
+       1. Load and filter data.
+       2. Calculate weighted averages.
+       3. Generate and display the histogram.
+       4. Display key statistics and allow for downloading the histogram and statistics.
+
+### b. **Program Entry Point**
    - Ensure the `main()` function is called when the script runs:
-   ```python
-   if __name__ == "__main__":
-       main()
+     ```python
+     if __name__ == "__main__":
+         main()
+     ```
+
+## 12. **Timezone Handling**
+   - Use the timezone setting defined in `config.yaml` (`America/Sao_Paulo`) to manage timestamps for exported files and footers on the histogram.
+
+## 13. **Application Execution**
+   - Run the Streamlit application with the following command:
+     ```bash
+     streamlit run batidas.py
+     ```

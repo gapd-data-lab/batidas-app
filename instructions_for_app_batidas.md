@@ -1,106 +1,104 @@
-## Instruction Prompt for the Python Program
+## Instructions for the Data Analysis Application with Streamlit
 
-Write a Python program using the Streamlit framework to create a data analysis web app for visualizing batch-level metrics using histograms. The program should meet the following updated requirements:
+Write a Python program using the **Streamlit** framework to create a web-based data analysis application that visualizes batch metrics using histograms. The program should follow the requirements described below:
 
-### Key Requirements:
+### **Main Requirements**:
 
 1. **Dependencies**:
-   - Use `pandas`, `numpy`, `matplotlib`, `streamlit`, and `pyyaml`.
+   - Use the libraries `pandas`, `numpy`, `matplotlib`, `streamlit`, and `pyyaml`.
    - Import additional libraries such as `datetime`, `io`, `base64`, and `pytz` for specific functionalities.
-   - Use `matplotlib.colors` and `matplotlib.ticker` for advanced visualization formatting.
+   - Use `matplotlib.colors` and `matplotlib.ticker` for advanced visualization customization.
 
-2. **Configuration File Management**:
-   - The configuration settings should be managed through an external YAML file (`config.yaml`).
-   - The configuration file must include:
-     - **Excel Column Mapping** (`excel_columns`): Column names used in the uploaded dataset.
-     - **Analysis Settings** (`analysis`): Default weights, tolerance thresholds, outlier thresholds, and row skipping instructions.
-     - **User Interface Settings** (`ui`): Labels, titles, and user options for the Streamlit interface.
-     - **Visualization Settings** (`visualization`): Settings for histogram size, grid style, colors, legends, and layout adjustments.
+2. **Configuration Management via YAML**:
+   - The configuration file should be managed through an external YAML file (`config.yaml`).
+   - The file should include:
+     - **Excel Column Mapping** (`excel_columns`): Names of the columns used in the loaded dataset.
+     - **Analysis Settings** (`analysis`): Default weights, tolerance thresholds, outlier handling, and data processing instructions.
+     - **User Interface Settings** (`ui`): Titles, labels, and configuration options for the interface.
+     - **Visualization Settings** (`visualization`): Histogram size, grid style, colors, legends, and layout adjustments.
 
-3. **Load and Process Data**:
+3. **Function to Load and Process Data**:
    - Function: `load_and_process_data(uploaded_file)`
-     - Load an Excel file (`.xlsx`), skipping rows as defined in the YAML file.
-     - Remove the first column if specified in the configuration.
-     - Ensure required columns are present, such as 'DIFERENÇA (%)'.
-     - Convert 'DATA' to datetime format for filtering.
-     - Return the processed DataFrame or display an error message if necessary.
+     - Loads an Excel file (`.xlsx`), skipping lines as configured in YAML.
+     - Removes the first column if configured.
+     - Ensures that essential columns, such as 'DIFERENÇA (%)', are present.
+     - Converts the 'DATA' column to datetime format for data filtering.
+     - Returns a processed Pandas DataFrame or displays an error message if necessary.
 
-4. **Find Correct Columns**:
+4. **Column Identification**:
    - Function: `find_correct_columns(df, config)`
-     - Identify the indices of important columns such as `PREVISTO (KG)` and `REALIZADO (KG)`.
-     - Ensure that dependent columns (`REALIZADO (KG)` and `DIFERENÇA (%)`) are found correctly based on configuration.
+     - Identifies the indices of important columns, such as `PREVISTO (KG)` and `REALIZADO (KG)`, based on the configuration.
 
-5. **Weighted Average Calculation with Relative Weights**:
+5. **Calculation of Weighted Average with Relative Weights**:
    - Function: `calculate_weighted_average_with_weights(df, pesos_relativos, config)`
-     - Convert necessary columns to numeric format and calculate the absolute value of the percentage difference.
-     - Assign relative weights to each type of food (`TIPO`) using user inputs.
-     - Calculate the adjusted planned quantity (`PESO AJUSTADO`).
-     - Group data by 'COD. BATIDA' and calculate the weighted average of the differences.
-     - Return a DataFrame containing the weighted averages.
+     - Converts columns to numeric format and calculates the absolute value of the percentage difference.
+     - Applies relative weights to each food type (`TIPO`) as provided by the user.
+     - Calculates the adjusted planned amount (`PESO AJUSTADO`).
+     - Groups the data by 'COD. BATIDA' and calculates the weighted average of the differences.
+     - Returns a DataFrame containing the weighted averages.
 
 6. **Outlier Removal**:
    - Function: `remove_outliers_from_df(df, column)`
-     - Use the IQR method to calculate and exclude values above a calculated upper bound.
-     - Return the filtered DataFrame.
+     - Uses the IQR method to calculate and exclude values outside a calculated upper limit.
+     - Returns the filtered DataFrame.
 
 7. **Data Filtering**:
    - Function: `filter_data(df, operadores, alimentos, dietas, start_date, end_date)`
-     - Filter the DataFrame based on user inputs: date range, operators (`OPERADOR`), food types (`ALIMENTO`), and diets (`NOME`).
-     - Return the filtered DataFrame.
+     - Filters the DataFrame based on user inputs: date range, operators (`OPERADOR`), food types (`ALIMENTO`), and diets (`NOME`).
+     - Returns the filtered DataFrame.
 
 8. **Histogram Creation**:
    - Function: `create_histogram(df, start_date, end_date, remove_outliers, pesos_relativos)`
-     - Use `matplotlib` to create a histogram of 'MÉDIA PONDERADA (%)'.
-     - Apply outlier removal based on user preference.
-     - Color histogram bars based on their value:
+     - Uses `matplotlib` to create a histogram of 'MÉDIA PONDERADA (%)'.
+     - Applies outlier removal based on user preference.
+     - Colors the histogram bars based on the values:
        - Values >= tolerance threshold are colored red.
        - Values < tolerance are colored green.
-     - Set labels, grid lines, and add a vertical dashed line representing the tolerance threshold.
-     - Add footer details for analysis period, total batches, and generation timestamp.
-     - Display relative weights for each food type on the right side of the histogram.
-     - Return the figure.
+     - Configures labels, gridlines, and adds a dashed vertical line representing the tolerance threshold.
+     - Adds footer details about the analysis period, total batches, and a timestamp.
+     - Displays relative weights for each food type on the right side of the histogram.
+     - Returns the generated figure.
 
-9. **Save Histogram and Statistics**:
+9. **Saving Histograms and Statistics**:
    - Function: `save_histogram_as_image(fig)`
-     - Save the histogram as a PNG and provide a link to download it.
+     - Saves the histogram as a PNG image and generates a download link.
 
    - Function: `save_statistics_as_csv(stats_df)`
-     - Save statistics as a CSV and provide a link for download.
+     - Saves the statistics as a CSV file and generates a download link.
 
-10. **Streamlit User Interface**:
+10. **User Interface with Streamlit**:
     - Function: `main()`
-      - Set up the page with appropriate titles and a "wide" layout.
-      - Create two columns for analysis settings and displaying results.
-      - Include a file uploader for Excel files, allowing only `.xlsx` files.
-      - Add analysis parameters such as:
-        - **Relative Weights**: Sliders for setting weights for `TIPO`.
-        - **Filtering**: Multiselect inputs for operators, food types, diets, and a date range selection.
-        - **Outlier Removal**: Checkbox to remove outliers from analysis.
-      - Add a "Generate" button to start the analysis.
+      - Sets up the page with an appropriate title and "wide" layout.
+      - Creates two columns for analysis parameters and results display.
+      - Includes a file uploader for Excel files, allowing only `.xlsx`.
+      - Adds analysis parameters, such as:
+        - **Relative Weights**: Sliders to adjust weights for `TIPO`.
+        - **Filtering**: Multiselect inputs for operators, food types, diets, and date range selection.
+        - **Outlier Removal**: Checkbox to remove outliers from the analysis.
+      - Adds a "Generate" button to start the analysis.
       - Upon clicking "Generate":
-        - Load and filter data.
-        - Calculate the weighted average.
-        - Generate and display the histogram.
-        - Provide options to download the histogram (PNG) and the statistics (CSV).
-        - Display tables for analysis results and relative weights.
+        - Loads and filters the data.
+        - Calculates the weighted average.
+        - Generates and displays the histogram.
+        - Provides options to download the histogram (PNG) and the statistics (CSV).
+        - Displays tables with results and relative weights.
 
-11. **Timezone Setting**:
-    - All generation timestamps must be displayed in the Brasília time zone using `pytz`.
+11. **Timezone Configuration**:
+    - All generated timestamps must be displayed in the Brasília timezone using `pytz`.
 
 12. **Function Calls**:
-    - Ensure the `main()` function is called using:
+    - Ensure that the `main()` function is called using:
       ```python
       if __name__ == "__main__":
           main()
       ```
 
-### Running the Application
+### **Running the Application**:
 
-To run the Streamlit app, use the following command:
+To run the Streamlit application, use the following command:
 
 ```bash
 streamlit run batidas.py
-
 ```
 
 ## GitHub Commands
