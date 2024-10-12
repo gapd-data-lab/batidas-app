@@ -1,0 +1,11 @@
+\begin{align*}
+\text{Contribuição de cada item} & : C_i = P_i \cdot \left( \frac{|\Delta_i| \cdot w_i}{100} \right) \\
+\text{Onde} & : \\
+P_i & : \text{Quantidade prevista do alimento } i \\
+|\Delta_i| & : \text{Diferença percentual absoluta para o alimento } i \\
+w_i & : \text{Peso relativo para o tipo de alimento } i \\
+
+\text{Peso Ajustado de cada item} & : W_i = P_i \cdot w_i \\
+
+\text{Média Ponderada por Batida} & : \overline{M} = \frac{\sum_{i=1}^{n} C_i}{\sum_{i=1}^{n} W_i} \times 100
+\end{align*}
