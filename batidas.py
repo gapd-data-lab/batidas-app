@@ -633,27 +633,32 @@ def main():
 
                 # Seleção de operadores
                 operadores = ['Todos'] + sorted(df[config['excel_columns']['operator']].unique().tolist())
-                operadores_selecionados = st.multiselect(
+                operadores_selecionados = st.selectbox(
                     config['ui']['multiselect']['operator_label'],
-                    operadores,
-                    default=['Todos']
+                    operadores
                 )
 
                 # Seleção de alimentos
                 alimentos = ['Todos'] + sorted(df[config['excel_columns']['alimento']].unique().tolist())
-                alimentos_selecionados = st.multiselect(
+                alimentos_selecionados = st.selectbox(
                     config['ui']['multiselect']['food_label'],
-                    alimentos,
-                    default=['Todos']
+                    alimentos
                 )
 
                 # Seleção de dietas
                 dietas = ['Todos'] + sorted(df[config['excel_columns']['nome']].unique().tolist())
-                dietas_selecionadas = st.multiselect(
+                dietas_selecionadas = st.selectbox(
                     config['ui']['multiselect']['diet_label'],
-                    dietas,
-                    default=['Todos']
+                    dietas
                 )
+
+                # Encapsular em lista para uso com df.isin()
+                operadores_selecionados = [operadores_selecionados]
+                alimentos_selecionados = [alimentos_selecionados]
+                dietas_selecionadas = [dietas_selecionadas]
+
+                # Filtrar os dados
+                df_filtered = filter_data(df, operadores_selecionados, alimentos_selecionados, dietas_selecionadas, start_date, end_date)
 
                 # Configuração de pesos relativos com valores do config.yaml
                 st.subheader(config['ui']['food_weights_subheader'])
