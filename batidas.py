@@ -52,8 +52,9 @@ def load_and_process_data(uploaded_file):
     Processamento:
     1. Carrega o arquivo Excel, pulando o número de linhas configurado.
     2. Remove a primeira coluna, se especificado na configuração.
-    3. Verifica se todas as colunas necessárias estão presentes no arquivo.
-    4. Converte colunas específicas (como valores numéricos e datas) para os tipos apropriados.
+    3. Remove colunas especificadas no arquivo de configuração.
+    4. Verifica se todas as colunas necessárias estão presentes no arquivo.
+    5. Converte colunas específicas (como valores numéricos e datas) para os tipos apropriados.
 
     Exibe uma mensagem de erro se o arquivo não contém as colunas esperadas ou se houver qualquer
     problema ao carregar os dados.
@@ -67,9 +68,13 @@ def load_and_process_data(uploaded_file):
         if config['analysis']['remove_first_column']:
             df = df.iloc[:, 1:]
 
-        # Remover a coluna 'BALANÇA' (coluna S), se existir
-        if 'BALANÇA' in df.columns:
-            df = df.drop(columns=['BALANÇA'])
+        # Remover colunas especificadas no arquivo de configuração
+        columns_to_remove = config['analysis'].get('columns_to_remove', [])
+        removed_columns = []  # Lista para armazenar as colunas removidas
+        for col in columns_to_remove:
+            if col in df.columns:
+                df = df.drop(columns=[col])
+                removed_columns.append(col)
 
         # Verificar se as colunas necessárias estão presentes
         required_columns = list(config['excel_columns'].values())
