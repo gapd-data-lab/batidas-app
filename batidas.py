@@ -508,7 +508,7 @@ def color_histogram_bars(patches, bins):
             color_intensity = min((3 - bin_value) / 3, 1)  # Intensidade baseada na proximidade do valor 0
             patch.set_facecolor((0, 1, 0, color_intensity))  # Escala de verde
 
-def create_histogram(df, start_date, end_date, remove_outliers, pesos_relativos):
+def create_histogram(df, start_date, end_date, remove_outliers, pesos_relativos, config):
     """
     Cria e exibe um histograma com base nas médias ponderadas das diferenças percentuais.
 
@@ -518,10 +518,11 @@ def create_histogram(df, start_date, end_date, remove_outliers, pesos_relativos)
     end_date (datetime): Data de término para o filtro de datas.
     remove_outliers (bool): Se True, remove outliers dos dados antes de criar o histograma.
     pesos_relativos (dict): Dicionário contendo os pesos relativos de cada tipo de alimento.
+    config (dict): Dicionário de configuração contendo as informações necessárias.
 
     Returns:
     matplotlib.figure.Figure: A figura contendo o histograma gerado.
-
+    
     A função cria um histograma para visualizar a distribuição das médias ponderadas das diferenças percentuais,
     removendo outliers conforme necessário. Ela também aplica uma linha vertical de referência com base no valor de tolerância
     e adiciona uma tabela de pesos ao gráfico. As configurações de layout e aparência são controladas pelas configurações 
@@ -591,13 +592,27 @@ def create_histogram(df, start_date, end_date, remove_outliers, pesos_relativos)
     brasilia_tz = pytz.timezone(config['timezone'])
     now_brasilia = datetime.datetime.now(brasilia_tz)
 
-    # Configuração do rodapé
+    # Configuração do rodapé usando as variáveis do arquivo de configuração
     footer_config = config['visualization']['footer']
-    plt.figtext(0.5, 0.01, f"Período analisado: {start_date.strftime('%d/%m/%Y')} a {end_date.strftime('%d/%m/%Y')}", 
-                ha="center", fontsize=footer_config['fontsize'])
-    plt.figtext(0.01, 0.01, f"Total de batidas: {len(df)}", fontsize=footer_config['fontsize'])
-    plt.figtext(0.99, 0.01, f"Gerado em: {now_brasilia.strftime('%d/%m/%Y %H:%M')} (Horário de Brasília)", 
-                ha="right", fontsize=footer_config['fontsize'])
+    footer_texts = footer_config['texts']
+    footer_positions = footer_config['positions']
+    footer_alignments = footer_config['alignments']
+
+    plt.figtext(
+        footer_positions['period_position'][0], footer_positions['period_position'][1],
+        footer_texts['period_text'].format(start_date=start_date.strftime('%d/%m/%Y'), end_date=end_date.strftime('%d/%m/%Y')),
+        ha=footer_alignments['period_alignment'], fontsize=footer_config['fontsize']
+    )
+    plt.figtext(
+        footer_positions['total_position'][0], footer_positions['total_position'][1],
+        footer_texts['total_text'].format(total_batidas=len(df)),
+        ha=footer_alignments['total_alignment'], fontsize=footer_config['fontsize']
+    )
+    plt.figtext(
+        footer_positions['generated_position'][0], footer_positions['generated_position'][1],
+        footer_texts['generated_text'].format(generated_time=now_brasilia.strftime('%d/%m/%Y %H:%M')),
+        ha=footer_alignments['generated_alignment'], fontsize=footer_config['fontsize']
+    )
     
     # Adicionar tabela de pesos relativos
     weights_config = config['visualization']['weights_table']
@@ -791,7 +806,8 @@ def main():
                 
                 if weighted_average_df is not None:
                     # Criar e exibir o histograma
-                    fig = create_histogram(weighted_average_df, start_date, end_date, remover_outliers, pesos_relativos)
+                    fig = create_histogram(weighted_average_df, start_date, end_date, remover_outliers, pesos_relativos, config=config)
+                    # Continuar com a exibição do gráfico ou salvar a figura, conforme necessário
                     st.pyplot(fig)
                     
                     # Adicionar opção para salvar o histograma

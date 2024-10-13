@@ -119,7 +119,7 @@ visualization:
     color: 'green'                               # Cor da linha vertical no histograma
     linestyle: '--'                              # Estilo da linha vertical
     linewidth: 2                                 # Espessura da linha vertical
-    label: "tolerância máxima"                          # Texto da legenda da linha vertical
+    label: "tolerância máxima"                   # Texto da legenda da linha vertical
 
   # Configuração da legenda
   legend:
@@ -130,7 +130,7 @@ visualization:
     edgecolor: 'black'                           # Cor da borda da legenda
     fancybox: true                               # Bordas arredondadas na caixa da legenda
     framealpha: 0.5                              # Transparência da legenda
-    bbox_to_anchor: [0.905, 0.80]                  # Posição exata da legenda no gráfico
+    bbox_to_anchor: [0.905, 0.80]                # Posição exata da legenda no gráfico
 
   weights_table:
     position: [0.9, 0.69]                        # Posição da tabela de pesos no gráfico
@@ -141,6 +141,18 @@ visualization:
 
   footer:
     fontsize: 10                                 # Tamanho da fonte do rodapé do gráfico
+    texts:
+      period_text: "Período analisado: {start_date} a {end_date}"   # Texto para o período analisado
+      total_text: "Total de batidas: {total_batidas}"               # Texto para o total de batidas
+      generated_text: "Gerado em: {generated_time} (Horário de Brasília)"  # Texto para a data de geração
+    positions:
+      period_position: [0.5, 0.01]               # Posição do texto de período
+      total_position: [0.01, 0.01]               # Posição do texto total de batidas
+      generated_position: [0.99, 0.01]           # Posição do texto da data de geração
+    alignments:
+      period_alignment: "center"                 # Alinhamento do texto de período
+      total_alignment: "left"                    # Alinhamento do texto total de batidas
+      generated_alignment: "right"               # Alinhamento do texto da data de geração
 
   subplot_adjust:
     left: 0.05                                   # Ajuste da margem esquerda do gráfico
