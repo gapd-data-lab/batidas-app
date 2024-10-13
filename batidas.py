@@ -307,8 +307,7 @@ def calculate_weighted_average_with_weights(df, pesos_relativos, config):
             df['PESO AJUSTADO'] = df[previsto_col]
 
         # CALCULAR A CONTRIBUIÇÃO COM BASE NA DIFERENÇA PERCENTUAL
-        # Para cada linha, a contribuição é calculada multiplicando o peso ajustado 
-        # pela diferença percentual (ajustada pelo peso relativo) e depois dividida por 100
+        # Para cada linha, a contribuição é calculada multiplicando o peso ajustado pela diferença percentual (ajustada pelo peso relativo) e depois dividida por 100
         df['CONTRIBUIÇÃO'] = df['PESO AJUSTADO'] * ((df[diferenca_percentual_col] * df['PESO RELATIVO']) / 100)
 
         # Agrupa o DataFrame pelo código da batida para calcular somatórios
