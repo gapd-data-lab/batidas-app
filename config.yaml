@@ -30,8 +30,8 @@ analysis:
   outlier_threshold: 1.5                  # Limite para definir outliers (em desvio interquartil)
   skip_rows: 2                            # Número de linhas a serem puladas ao carregar o arquivo Excel
   remove_first_column: true               # Indica se a primeira coluna do Excel deve ser removida (geralmente índice)
-  columns_to_remove: ['BALANÇA']          # Coluna a ser removida
-  
+  columns_to_remove: ['BALANÇA']          # Coluna a ser removida em função de estar vazia (não conter dados)
+
 # ----------------------------------------------------------------------
 # CONFIGURAÇÃO DOS SLIDERS DE PESOS RELATIVOS
 # ----------------------------------------------------------------------
