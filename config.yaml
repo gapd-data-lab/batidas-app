@@ -92,12 +92,8 @@ ui:
     label: "Remover outliers do histograma"      # Texto de instrução para remover outliers
     help: "Remover valores extremos que podem distorcer a análise."  # Texto de ajuda sobre outliers
   generate_button: "Gerar"                       # Texto do botão de geração de resultados
-  results_header: "Resultados da Análise - Confinamento"  # Título da seção de resultados
+  results_header: "Resultados da análise - conformidade das dietas"  # Título da seção de resultados
   statistics_title: "### Estatísticas principais" # Título da seção de estatísticas
-  ui:
-  results_header: "Resultados:"
-  statistics_title: "Estatísticas principais das diferenças percentuais"
-  food_weights_subheader: "Pesos relativos"
   outliers_removed_message: "Outliers foram removidos do histograma para melhor visualização."  # Mensagem ao remover outliers
 
 # ----------------------------------------------------------------------
@@ -105,7 +101,7 @@ ui:
 # ----------------------------------------------------------------------
 visualization:
   histogram_figsize: [12, 8]                     # Tamanho do histograma (figura) em polegadas
-  histogram_title: "Distribuição da Média Ponderada da Diferença Percentual - Confinamento"  # Título do histograma
+  histogram_title: "Distribuição da Média Ponderada da Diferença Percentual - Dietas"  # Título do histograma
   x_label: "média ponderada da diferença (%)"    # Rótulo do eixo X
   y_label: "nº de batidas"                       # Rótulo do eixo Y
   color_threshold: 3                             # Limite de cor para destacar barras específicas
