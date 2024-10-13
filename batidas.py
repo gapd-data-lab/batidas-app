@@ -115,16 +115,12 @@ def load_and_process_data(uploaded_file):
         if remove_first_column:
             df = df.iloc[:, 1:]
 
-        # Remover colunas especificadas no arquivo de configuração
-        removed_columns = []  # Lista para armazenar as colunas removidas
-        for col in columns_to_remove:
-            if col in df.columns:
-                df = df.drop(columns=[col])
-                removed_columns.append(col)
-
-        # Mensagem de confirmação sobre as colunas removidas
-        if removed_columns:
-            st.info(f"Colunas removidas: {', '.join(removed_columns)}")
+        # Itera sobre a lista de colunas a serem removidas especificadas no arquivo de configuração.
+        removed_columns = []  # Inicializa uma lista para armazenar os nomes das colunas que foram efetivamente removidas do DataFrame.
+        for col in columns_to_remove:  # Para cada coluna na lista columns_to_remove:
+            if col in df.columns:  # Verifica se a coluna atual está presente nas colunas do DataFrame.
+                df = df.drop(columns=[col])  # Remove a coluna do DataFrame.
+                removed_columns.append(col)  # Adiciona o nome da coluna removida à lista removed_columns.
 
         # Pré-processar o DataFrame (converter colunas numéricas e verificar colunas necessárias)
         df = preprocess_dataframe(df, config)
@@ -302,19 +298,29 @@ def calculate_weighted_average_with_weights(df, pesos_relativos, config):
         # Mapeamento dos pesos relativos
         df['PESO RELATIVO'] = df[pesos_relativos_col].map(pesos_relativos)
 
-        # Aplicar o multiplicador de pesos se configurado
+        # Aplicar o multiplicador de pesos se configurado (caso contrário, usa o valor previsto diretamente)
         if peso_multiplicador:
+            # Ajusta o peso multiplicando a coluna prevista pelo peso relativo
             df['PESO AJUSTADO'] = df[previsto_col] * df['PESO RELATIVO']
         else:
+            # Caso não haja multiplicador, o peso ajustado é igual ao previsto
             df['PESO AJUSTADO'] = df[previsto_col]
 
         # CALCULAR A CONTRIBUIÇÃO COM BASE NA DIFERENÇA PERCENTUAL
+        # Para cada linha, a contribuição é calculada multiplicando o peso ajustado 
+        # pela diferença percentual (ajustada pelo peso relativo) e depois dividida por 100
         df['CONTRIBUIÇÃO'] = df['PESO AJUSTADO'] * ((df[diferenca_percentual_col] * df['PESO RELATIVO']) / 100)
 
-        # Agrupamento por COD. BATIDA e cálculo da média ponderada
+        # Agrupa o DataFrame pelo código da batida para calcular somatórios
         grouped = df.groupby(excel_columns['cod_batida'])
+        
+        # Soma total dos pesos ajustados por grupo de código de batida
         total_planned_quantity = grouped['PESO AJUSTADO'].sum()
+        
+        # Soma total das contribuições por grupo de código de batida
         total_contribution = grouped['CONTRIBUIÇÃO'].sum()
+        
+        # Calcula a média ponderada da contribuição em relação ao peso ajustado, convertida para porcentagem
         calculated_weighted_avg = (total_contribution / total_planned_quantity) * 100
 
         # Retornar DataFrame com a média ponderada
@@ -335,16 +341,35 @@ def calculate_weighted_average_with_weights(df, pesos_relativos, config):
 def create_statistics_dataframe(weighted_average_df, remove_outliers=False, config=None):
     """
     Cria um DataFrame com as principais estatísticas das diferenças percentuais.
+
+    Args:
+    weighted_average_df (DataFrame): DataFrame contendo as médias ponderadas das diferenças percentuais.
+    remove_outliers (bool): Se True, remove outliers antes de calcular as estatísticas.
+    config (dict): Dicionário de configuração contendo os parâmetros necessários.
+
+    Returns:
+    DataFrame: DataFrame contendo as estatísticas calculadas, incluindo:
+        - Número de batidas (linhas no DataFrame)
+        - Média ponderada das diferenças percentuais
+        - Mediana das diferenças percentuais
+        - Contagem de batidas em intervalos específicos.
+
+    A função calcula a média e mediana das diferenças percentuais e conta quantas batidas estão em 
+    intervalos específicos de variação. Se solicitado, remove outliers antes do cálculo.
     """
+    # Verificar se `config` foi passado e se contém a seção necessária
+    if config is None:
+        raise ValueError("O parâmetro `config` não foi fornecido para `create_statistics_dataframe`.")
+    
+    if 'statistics' not in config or 'interval_limits' not in config['statistics']:
+        raise KeyError("A chave 'statistics' ou 'interval_limits' não está presente no `config`. "
+                       "Verifique se o arquivo de configuração está correto e atualizado.")
+
     # Criar uma cópia do DataFrame para não modificar o original
     df = weighted_average_df.copy()
 
     if remove_outliers:
         df = remove_outliers_from_df(df, 'MÉDIA PONDERADA (%)')
-
-    # Verificar se `config` foi passado
-    if config is None:
-        raise ValueError("O parâmetro `config` não foi fornecido para `create_statistics_dataframe`.")
 
     # Carregar limites dos intervalos do arquivo de configuração
     interval_limits = config['statistics']['interval_limits']
@@ -361,8 +386,8 @@ def create_statistics_dataframe(weighted_average_df, remove_outliers=False, conf
         ],
         'Valor': [
             len(df),  # Número total de batidas
-            df['MÉDIA PONDERADA (%)'].mean(),  # Média ponderada
-            df['MÉDIA PONDERADA (%)'].median(),  # Mediana ponderada
+            round(df['MÉDIA PONDERADA (%)'].mean(), 1),  # Média ponderada (arredondada para 2 casas decimais)
+            round(df['MÉDIA PONDERADA (%)'].median(), 1),  # Mediana ponderada (arredondada para 2 casas decimais)
             ((df['MÉDIA PONDERADA (%)'] >= interval_limits['low_1']) & 
              (df['MÉDIA PONDERADA (%)'] < interval_limits['high_1'])).sum(),  # Contagem entre low_1% e high_1%
             ((df['MÉDIA PONDERADA (%)'] >= interval_limits['low_2']) & 
@@ -645,6 +670,7 @@ def save_statistics_as_csv(stats_df):
     return href
 
 def main():
+
     """
     Função principal que controla a execução do programa e a interação com o usuário via Streamlit.
 
