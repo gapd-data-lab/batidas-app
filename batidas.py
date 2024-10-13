@@ -385,14 +385,14 @@ def create_statistics_dataframe(weighted_average_df, remove_outliers=False, conf
             f"Diferença acima de {interval_limits['high_2']}%"
         ],
         'Valor': [
-            len(df),  # Número total de batidas
-            round(df['MÉDIA PONDERADA (%)'].mean(), 1),  # Média ponderada (arredondada para 2 casas decimais)
-            round(df['MÉDIA PONDERADA (%)'].median(), 1),  # Mediana ponderada (arredondada para 2 casas decimais)
+            len(df),  # Número total de registros de batidas
+            round(df['MÉDIA PONDERADA (%)'].mean(), 1),  # Média ponderada dos valores na coluna MÉDIA PONDERADA (%), arredondada para 1 casa decimal
+            round(df['MÉDIA PONDERADA (%)'].median(), 1),  # Mediana dos valores na coluna MÉDIA PONDERADA (%), arredondada para 1 casa decimal
             ((df['MÉDIA PONDERADA (%)'] >= interval_limits['low_1']) & 
-             (df['MÉDIA PONDERADA (%)'] < interval_limits['high_1'])).sum(),  # Contagem entre low_1% e high_1%
+             (df['MÉDIA PONDERADA (%)'] < interval_limits['high_1'])).sum(),  # Contagem de registros com MÉDIA PONDERADA (%) entre low_1% e high_1%
             ((df['MÉDIA PONDERADA (%)'] >= interval_limits['low_2']) & 
-             (df['MÉDIA PONDERADA (%)'] < interval_limits['high_2'])).sum(),  # Contagem entre low_2% e high_2%
-            (df['MÉDIA PONDERADA (%)'] >= interval_limits['high_2']).sum()  # Contagem acima de high_2%
+             (df['MÉDIA PONDERADA (%)'] < interval_limits['high_2'])).sum(),  # Contagem de registros com MÉDIA PONDERADA (%) entre low_2% e high_2%
+            (df['MÉDIA PONDERADA (%)'] >= interval_limits['high_2']).sum()  # Contagem de registros com MÉDIA PONDERADA (%) acima de high_2%
         ]
     }
 
