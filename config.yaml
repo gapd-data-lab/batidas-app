@@ -93,7 +93,7 @@ ui:
     help: "Remover valores extremos que podem distorcer a análise."  # Texto de ajuda sobre outliers
   generate_button: "Gerar"                       # Texto do botão de geração de resultados
   results_header: "Resultados da análise - conformidade das dietas"  # Título da seção de resultados
-  statistics_title: "### Estatísticas principais" # Título da seção de estatísticas
+  statistics_title: "Estatísticas principais" # Título da seção de estatísticas
   outliers_removed_message: "Outliers foram removidos do histograma para melhor visualização."  # Mensagem ao remover outliers
 
 # ----------------------------------------------------------------------

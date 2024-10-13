@@ -768,6 +768,7 @@ def main():
                 # Verificar se o DataFrame filtrado está vazio
                 if df_filtered.empty:
                     st.warning("Não há dados suficientes para análise com os filtros selecionados.")
+                    return  # Finaliza a função principal para evitar execuções subsequentes
                 else:
                     st.success("Filtro aplicado com sucesso!")
 
@@ -799,47 +800,44 @@ def main():
         if uploaded_file is not None and df is not None and iniciar_analise:
             st.header(config['ui']['results_header'])
 
-            if df_filtered.empty:
-                st.warning("Não há dados suficientes para gerar a análise.")
+            # Calcular a média ponderada das diferenças percentuais
+            weighted_average_df = calculate_weighted_average_with_weights(df_filtered, pesos_relativos, config)
+
+            if weighted_average_df is not None:
+                # Criar e exibir o histograma com os dados filtrados
+                fig = create_histogram(weighted_average_df, start_date, end_date, remover_outliers, pesos_relativos, config=config)
+                st.pyplot(fig)
+
+                # Adicionar opção para salvar o histograma
+                st.markdown(save_histogram_as_image(fig), unsafe_allow_html=True)
+
+                # Criar duas colunas para exibir as tabelas de estatísticas e pesos lado a lado
+                col1, col2 = st.columns(2)
+
+                # Exibir estatísticas na primeira coluna
+                with col1:
+                    st.subheader(config['ui']['statistics_title'])
+                    stats_df = create_statistics_dataframe(weighted_average_df, remover_outliers, config=config)
+                    st.write(stats_df)
+
+                # Exibir pesos relativos na segunda coluna
+                with col2:
+                    st.subheader(config['ui']['food_weights_subheader'])
+                    pesos_df = pd.DataFrame(list(pesos_relativos.items()), columns=['Tipo de Alimento', 'Peso Relativo'])
+                    st.write(pesos_df)
+
+                # Adicionar data de geração e opção para download dos arquivos CSV
+                data_geracao = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                stats_df['Data de Geração'] = data_geracao
+                pesos_df['Data de Geração'] = data_geracao
+                combined_df = pd.concat([stats_df, pesos_df], ignore_index=True, sort=False)
+                st.markdown(save_statistics_as_csv(combined_df), unsafe_allow_html=True)
+
+                # Informar sobre a remoção de outliers, se aplicável
+                if remover_outliers:
+                    st.info(config['ui'].get('outliers_removed_message', "Outliers foram removidos do histograma para melhor visualização."))
             else:
-                # Calcular a média ponderada das diferenças percentuais
-                weighted_average_df = calculate_weighted_average_with_weights(df_filtered, pesos_relativos, config)
-
-                if weighted_average_df is not None:
-                    # Criar e exibir o histograma com os dados filtrados
-                    fig = create_histogram(weighted_average_df, start_date, end_date, remover_outliers, pesos_relativos, config=config)
-                    st.pyplot(fig)
-
-                    # Adicionar opção para salvar o histograma
-                    st.markdown(save_histogram_as_image(fig), unsafe_allow_html=True)
-
-                    # Criar duas colunas para exibir as tabelas de estatísticas e pesos lado a lado
-                    col1, col2 = st.columns(2)
-
-                    # Exibir estatísticas na primeira coluna
-                    with col1:
-                        st.subheader(config['ui']['statistics_title'])
-                        stats_df = create_statistics_dataframe(weighted_average_df, remover_outliers, config=config)
-                        st.write(stats_df)
-
-                    # Exibir pesos relativos na segunda coluna
-                    with col2:
-                        st.subheader(config['ui']['food_weights_subheader'])
-                        pesos_df = pd.DataFrame(list(pesos_relativos.items()), columns=['Tipo de Alimento', 'Peso Relativo'])
-                        st.write(pesos_df)
-
-                    # Adicionar data de geração e opção para download dos arquivos CSV
-                    data_geracao = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    stats_df['Data de Geração'] = data_geracao
-                    pesos_df['Data de Geração'] = data_geracao
-                    combined_df = pd.concat([stats_df, pesos_df], ignore_index=True, sort=False)
-                    st.markdown(save_statistics_as_csv(combined_df), unsafe_allow_html=True)
-
-                    # Informar sobre a remoção de outliers, se aplicável
-                    if remover_outliers:
-                        st.info(config['ui'].get('outliers_removed_message', "Outliers foram removidos do histograma para melhor visualização."))
-                else:
-                    st.error("Não foi possível calcular as médias ponderadas. Verifique os dados e tente novamente.")
+                st.error("Não foi possível calcular as médias ponderadas. Verifique os dados e tente novamente.")
 
 if __name__ == "__main__":
     main()
