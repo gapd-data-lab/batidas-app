@@ -64,7 +64,6 @@ def load_and_process_data(uploaded_file):
         # Carregar as configurações relevantes
         analysis_config = config['analysis']
         excel_columns = config['excel_columns']
-
         skip_rows = analysis_config['skip_rows']
         remove_first_column = analysis_config['remove_first_column']
         columns_to_remove = analysis_config.get('columns_to_remove', [])
