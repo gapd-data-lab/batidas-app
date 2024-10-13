@@ -32,6 +32,14 @@ analysis:
   remove_first_column: true               # Indica se a primeira coluna do Excel deve ser removida (geralmente índice)
   columns_to_remove: ['BALANÇA']          # Coluna a ser removida em função de estar vazia (não conter dados)
 
+  # Limites dos intervalos de variação das diferenças percentuais
+statistics:
+  interval_limits:
+    low_1: 3                            # Limite inferior do primeiro intervalo (%)
+    high_1: 5                           # Limite superior do primeiro intervalo (%)
+    low_2: 5                            # Limite inferior do segundo intervalo (%)
+    high_2: 7                           # Limite superior do segundo intervalo (%)
+
 # ----------------------------------------------------------------------
 # CONFIGURAÇÃO DAS COLUNAS NUMÉRICAS
 # ----------------------------------------------------------------------
@@ -111,7 +119,7 @@ visualization:
     color: 'green'                               # Cor da linha vertical no histograma
     linestyle: '--'                              # Estilo da linha vertical
     linewidth: 2                                 # Espessura da linha vertical
-    label: "Tolerância Máxima"                   # Texto da legenda da linha vertical
+    label: "tolerância máxima"                          # Texto da legenda da linha vertical
 
   # Configuração da legenda
   legend:
@@ -122,10 +130,10 @@ visualization:
     edgecolor: 'black'                           # Cor da borda da legenda
     fancybox: true                               # Bordas arredondadas na caixa da legenda
     framealpha: 0.5                              # Transparência da legenda
-    bbox_to_anchor: [0.91, 0.9]                  # Posição exata da legenda no gráfico
+    bbox_to_anchor: [0.905, 0.80]                  # Posição exata da legenda no gráfico
 
   weights_table:
-    position: [0.9, 0.70]                        # Posição da tabela de pesos no gráfico
+    position: [0.9, 0.69]                        # Posição da tabela de pesos no gráfico
     fontsize: 8                                  # Tamanho da fonte da tabela de pesos
     facecolor: 'lightgrey'                       # Cor de fundo da tabela de pesos
     alpha: 0.5                                   # Transparência da tabela de pesos

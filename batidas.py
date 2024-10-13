@@ -39,6 +39,46 @@ def read_config(config_file="config.yaml"):
 # Carregar configurações
 config = read_config()
 
+def preprocess_dataframe(df, config):
+    """
+    Realiza o pré-processamento de um DataFrame, incluindo conversão de colunas
+    para numéricas e verificação de colunas necessárias.
+
+    Args:
+    -----
+    df : DataFrame
+        O DataFrame que será processado.
+
+    config : dict
+        Dicionário de configuração contendo as informações necessárias, como
+        colunas numéricas e colunas obrigatórias.
+
+    Returns:
+    --------
+    DataFrame
+        O DataFrame processado, com colunas convertidas e verificadas.
+
+    Levanta:
+    --------
+    ValueError: Se alguma das colunas obrigatórias estiver ausente.
+    """
+    # Carregar configurações de colunas numéricas e obrigatórias
+    numeric_columns = config['numeric_columns']
+    excel_columns = config['excel_columns']
+
+    # Verificar se as colunas necessárias estão presentes
+    required_columns = list(excel_columns.values())
+    missing_columns = [col for col in required_columns if col not in df.columns]
+    if missing_columns:
+        raise ValueError(f"Colunas ausentes no arquivo: {', '.join(missing_columns)}")
+
+    # Converter colunas numéricas especificadas na configuração
+    for col in numeric_columns:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+    return df
+
 def load_and_process_data(uploaded_file):
     """
     Carrega e processa os dados de um arquivo Excel carregado pelo usuário.
@@ -64,7 +104,6 @@ def load_and_process_data(uploaded_file):
         # Carregar as configurações relevantes
         analysis_config = config['analysis']
         excel_columns = config['excel_columns']
-        numeric_columns = config['numeric_columns'] 
         skip_rows = analysis_config['skip_rows']
         remove_first_column = analysis_config['remove_first_column']
         columns_to_remove = analysis_config.get('columns_to_remove', [])
@@ -83,20 +122,12 @@ def load_and_process_data(uploaded_file):
                 df = df.drop(columns=[col])
                 removed_columns.append(col)
 
-        # Verificar se as colunas necessárias estão presentes
-        required_columns = list(excel_columns.values())
-        missing_columns = [col for col in required_columns if col not in df.columns]
-        if missing_columns:
-            raise ValueError(f"Colunas ausentes no arquivo: {', '.join(missing_columns)}")
+        # Mensagem de confirmação sobre as colunas removidas
+        if removed_columns:
+            st.info(f"Colunas removidas: {', '.join(removed_columns)}")
 
-        # Converter colunas para tipos numéricos e de datas
-        date_column = excel_columns['date']
-        df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
-
-        # Converter colunas numéricas especificadas na configuração
-        for col in numeric_columns:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
+        # Pré-processar o DataFrame (converter colunas numéricas e verificar colunas necessárias)
+        df = preprocess_dataframe(df, config)
 
         return df
 
@@ -252,22 +283,21 @@ def calculate_weighted_average_with_weights(df, pesos_relativos, config):
     """
 
     try:
-        # Carregar parâmetros do arquivo de configuração
-        previsto_col = config['weighted_average']['previsto_column']
-        realizado_col = config['weighted_average']['realizado_column']
-        diferenca_percentual_col = config['weighted_average']['diferenca_percentual_column']
-        pesos_relativos_col = config['weighted_average']['pesos_relativos_column']
-        peso_multiplicador = config['weighted_average']['peso_multiplicador']
-        outlier_threshold = config['weighted_average']['outlier_threshold']
-        
+        # Carregar as configurações relevantes
+        weighted_config = config['weighted_average']
+        excel_columns = config['excel_columns']
+        previsto_col = weighted_config['previsto_column']
+        realizado_col = weighted_config['realizado_column']
+        diferenca_percentual_col = weighted_config['diferenca_percentual_column']
+        pesos_relativos_col = weighted_config['pesos_relativos_column']
+        peso_multiplicador = weighted_config['peso_multiplicador']
+
         # Criar uma cópia do DataFrame para evitar SettingWithCopyWarning
         df = df.copy()
 
         # Converter colunas para numérico, permitindo números com casas decimais
-        df[previsto_col] = pd.to_numeric(df[previsto_col], errors='coerce')
-        df[realizado_col] = pd.to_numeric(df[realizado_col], errors='coerce')
-        df[diferenca_percentual_col] = pd.to_numeric(df[diferenca_percentual_col], errors='coerce')
-        df['DIFERENÇA (%) ABS'] = df[diferenca_percentual_col].abs()
+        df = preprocess_dataframe(df, config)
+        df[diferenca_percentual_col] = df[diferenca_percentual_col].abs()
 
         # Mapeamento dos pesos relativos
         df['PESO RELATIVO'] = df[pesos_relativos_col].map(pesos_relativos)
@@ -278,20 +308,21 @@ def calculate_weighted_average_with_weights(df, pesos_relativos, config):
         else:
             df['PESO AJUSTADO'] = df[previsto_col]
 
-        # Calcular a contribuição com base na diferença percentual
-        df['CONTRIBUIÇÃO'] = df['PESO AJUSTADO'] * ((df['DIFERENÇA (%) ABS'] * df['PESO RELATIVO']) / 100)
+        # CALCULAR A CONTRIBUIÇÃO COM BASE NA DIFERENÇA PERCENTUAL
+        df['CONTRIBUIÇÃO'] = df['PESO AJUSTADO'] * ((df[diferenca_percentual_col] * df['PESO RELATIVO']) / 100)
 
         # Agrupamento por COD. BATIDA e cálculo da média ponderada
-        grouped = df.groupby(config['excel_columns']['cod_batida'])
+        grouped = df.groupby(excel_columns['cod_batida'])
         total_planned_quantity = grouped['PESO AJUSTADO'].sum()
         total_contribution = grouped['CONTRIBUIÇÃO'].sum()
-        calculated_weighted_avg = (total_contribution / total_planned_quantity) * 100        
+        calculated_weighted_avg = (total_contribution / total_planned_quantity) * 100
+
         # Retornar DataFrame com a média ponderada
         weighted_averages = pd.DataFrame({
-            config['excel_columns']['cod_batida']: total_planned_quantity.index,
-            'MÉDIA PONDERADA (%)': calculated_weighted_avg.fillna(0).astype(float)        
+            excel_columns['cod_batida']: total_planned_quantity.index,
+            'MÉDIA PONDERADA (%)': calculated_weighted_avg.fillna(0).astype(float)
         })
-        
+
         return weighted_averages
 
     except KeyError as e:
@@ -301,30 +332,22 @@ def calculate_weighted_average_with_weights(df, pesos_relativos, config):
         st.error(f"Erro no cálculo da média ponderada: {str(e)}")
         return None
 
-def create_statistics_dataframe(weighted_average_df, remove_outliers=False):
+def create_statistics_dataframe(weighted_average_df, remove_outliers=False, config=None):
     """
     Cria um DataFrame com as principais estatísticas das diferenças percentuais.
-
-    Args:
-    weighted_average_df (DataFrame): DataFrame contendo as médias ponderadas das diferenças percentuais.
-    remove_outliers (bool): Se True, remove outliers antes de calcular as estatísticas.
-
-    Returns:
-    DataFrame: DataFrame contendo as estatísticas calculadas, incluindo:
-        - Número de batidas (linhas no DataFrame)
-        - Média ponderada das diferenças percentuais
-        - Mediana das diferenças percentuais
-        - Contagem de batidas em intervalos específicos (3% a 5%, 5% a 7%, >7%).
-
-    A função calcula a média e mediana das diferenças percentuais e conta quantas batidas estão em 
-    intervalos específicos de variação. Se solicitado, remove outliers antes do cálculo.
     """
-
     # Criar uma cópia do DataFrame para não modificar o original
     df = weighted_average_df.copy()
 
     if remove_outliers:
         df = remove_outliers_from_df(df, 'MÉDIA PONDERADA (%)')
+
+    # Verificar se `config` foi passado
+    if config is None:
+        raise ValueError("O parâmetro `config` não foi fornecido para `create_statistics_dataframe`.")
+
+    # Carregar limites dos intervalos do arquivo de configuração
+    interval_limits = config['statistics']['interval_limits']
 
     # Calcular as estatísticas com base na média ponderada corrigida
     stats_data = {
@@ -332,23 +355,24 @@ def create_statistics_dataframe(weighted_average_df, remove_outliers=False):
             'Número de Batidas', 
             'Média Ponderada (%)', 
             'Mediana Ponderada (%)',
-            'Diferença entre 3% e 5%',
-            'Diferença entre 5% e 7%',
-            'Diferença acima de 7%'
+            f"Diferença entre {interval_limits['low_1']}% e {interval_limits['high_1']}%",
+            f"Diferença entre {interval_limits['low_2']}% e {interval_limits['high_2']}%",
+            f"Diferença acima de {interval_limits['high_2']}%"
         ],
         'Valor': [
             len(df),  # Número total de batidas
-            f"{df['MÉDIA PONDERADA (%)'].mean():.2f}",  # Média ponderada
-            f"{df['MÉDIA PONDERADA (%)'].median():.2f}",  # Mediana ponderada
-            ((df['MÉDIA PONDERADA (%)'] >= 3) & (df['MÉDIA PONDERADA (%)'] < 5)).sum(),  # Contagem entre 3% e 5%
-            ((df['MÉDIA PONDERADA (%)'] >= 5) & (df['MÉDIA PONDERADA (%)'] < 7)).sum(),  # Contagem entre 5% e 7%
-            (df['MÉDIA PONDERADA (%)'] >= 7).sum()  # Contagem acima de 7%
+            df['MÉDIA PONDERADA (%)'].mean(),  # Média ponderada
+            df['MÉDIA PONDERADA (%)'].median(),  # Mediana ponderada
+            ((df['MÉDIA PONDERADA (%)'] >= interval_limits['low_1']) & 
+             (df['MÉDIA PONDERADA (%)'] < interval_limits['high_1'])).sum(),  # Contagem entre low_1% e high_1%
+            ((df['MÉDIA PONDERADA (%)'] >= interval_limits['low_2']) & 
+             (df['MÉDIA PONDERADA (%)'] < interval_limits['high_2'])).sum(),  # Contagem entre low_2% e high_2%
+            (df['MÉDIA PONDERADA (%)'] >= interval_limits['high_2']).sum()  # Contagem acima de high_2%
         ]
     }
 
-    # Garantir que os valores estão no formato numérico adequado
+    # Criar o DataFrame com os resultados
     stats_df = pd.DataFrame(stats_data)
-    stats_df['Valor'] = pd.to_numeric(stats_df['Valor'], errors='coerce')  # Converter valores para numérico
 
     return stats_df
 
@@ -479,78 +503,104 @@ def create_histogram(df, start_date, end_date, remove_outliers, pesos_relativos)
     definidas no arquivo de configuração.
     """
 
-    fig, ax = plt.subplots(figsize=tuple(config['visualization']['histogram_figsize']))
+    # Configuração do tamanho do histograma (figura)
+    figsize = tuple(config['visualization']['histogram_figsize'])
+    fig, ax = plt.subplots(figsize=figsize)
     
+    # Remover outliers se necessário
     if remove_outliers:
         df = remove_outliers_from_df(df, 'MÉDIA PONDERADA (%)')
     
+    # Obter dados para o histograma e filtrar valores não negativos
     data = df['MÉDIA PONDERADA (%)']
-    data = data[data >= 0]  # Considerar apenas valores positivos
-    
+    data = data[data >= 0]
+
+    # Definir os limites e calcular a quantidade de bins do histograma
     lower_bound, upper_bound, n_bins = calculate_histogram_bins(data)
     
     # Criar o histograma
     n, bins, patches = ax.hist(data, bins=n_bins, range=(lower_bound, upper_bound), edgecolor='black')
-    
+
     # Colorir as barras com escala de cores
     color_histogram_bars(patches, bins)
     
-    ax.set_xlabel(config['visualization']['x_label'])  # Usando o parâmetro do arquivo de configuração
-    ax.set_ylabel(config['visualization']['y_label'])  # Usando o parâmetro do arquivo de configuração
+    # Configurações dos rótulos e título
+    ax.set_xlabel(config['visualization']['x_label'])
+    ax.set_ylabel(config['visualization']['y_label'])
     ax.set_title(config['visualization']['histogram_title'])
-    
-    # Adicionar linha vertical no valor de tolerância com estilo tracejado
+
+    # Adicionar linha vertical para marcar a tolerância
     tolerance = config['analysis']['tolerance_threshold']
-    ax.axvline(x=tolerance, color='green', linestyle='--', linewidth=2, 
-               label=f'Tolerância Máxima ({tolerance}%)')
+    vertical_line_config = config['visualization']['vertical_line']
+    ax.axvline(
+        x=tolerance,
+        color=vertical_line_config['color'],
+        linestyle=vertical_line_config['linestyle'],
+        linewidth=vertical_line_config['linewidth'],
+        label=f"{vertical_line_config['label']} ({tolerance}%)"
+    )
     
+    # Configurar a legenda do histograma
     legend_config = config['visualization']['legend']
     ax.legend(
         loc=legend_config['location'],
         fontsize=legend_config['fontsize'],
-        frameon=True,
+        frameon=legend_config['frameon'],
         facecolor=legend_config['facecolor'],
         edgecolor=legend_config['edgecolor'],
+        fancybox=legend_config['fancybox'],
         framealpha=legend_config['framealpha'],
-        bbox_to_anchor=tuple(legend_config['bbox_to_anchor']),
-        bbox_transform=ax.transAxes
+        bbox_to_anchor=legend_config['bbox_to_anchor']
     )
 
     # Configurar o grid
     grid_config = config['visualization']['grid_style']
     ax.grid(axis=grid_config['axis'], linestyle=grid_config['linestyle'], linewidth=grid_config['linewidth'])
     ax.set_axisbelow(True)  # Colocar o grid atrás das barras
+
+    # Ajustar o eixo X
     ax.xaxis.set_major_locator(MaxNLocator(integer=True, nbins=20, prune='both'))
     ax.xaxis.set_major_formatter(FuncFormatter(lambda x, p: f"{int(x)}"))
-    
+
     # Configurar o fuso horário de Brasília
     brasilia_tz = pytz.timezone(config['timezone'])
     now_brasilia = datetime.datetime.now(brasilia_tz)
-    
+
+    # Configuração do rodapé
     footer_config = config['visualization']['footer']
-    # Adicionar informações no rodapé
     plt.figtext(0.5, 0.01, f"Período analisado: {start_date.strftime('%d/%m/%Y')} a {end_date.strftime('%d/%m/%Y')}", 
                 ha="center", fontsize=footer_config['fontsize'])
     plt.figtext(0.01, 0.01, f"Total de batidas: {len(df)}", fontsize=footer_config['fontsize'])
     plt.figtext(0.99, 0.01, f"Gerado em: {now_brasilia.strftime('%d/%m/%Y %H:%M')} (Horário de Brasília)", 
                 ha="right", fontsize=footer_config['fontsize'])
     
-    # Adicionar pesos relativos no lado direito da área do gráfico
+    # Adicionar tabela de pesos relativos
     weights_config = config['visualization']['weights_table']
-    pesos_text = "Pesos relativos dos tipos de alimento:\n"
+    pesos_text = "Pesos relativos dos tipos de alimentos:\n"
     pesos_text += "\n".join([f"{tipo:>20}: {peso:>4.1f}" for tipo, peso in pesos_relativos.items()])
-    fig.text(weights_config['position'][0], weights_config['position'][1], 
-             pesos_text, ha='right', fontsize=weights_config['fontsize'], va='top', linespacing=1.5,
-             bbox=dict(facecolor=weights_config['facecolor'], 
-                       alpha=weights_config['alpha'], 
-                       boxstyle=weights_config['boxstyle']))
+    fig.text(
+        weights_config['position'][0],
+        weights_config['position'][1],
+        pesos_text,
+        ha='right',
+        fontsize=weights_config['fontsize'],
+        va='top',
+        linespacing=1.5,
+        bbox=dict(
+            facecolor=weights_config['facecolor'],
+            alpha=weights_config['alpha'],
+            boxstyle=weights_config['boxstyle']
+        )
+    )
 
-    plt.tight_layout()
+    # Ajustar o layout do gráfico
     subplot_config = config['visualization']['subplot_adjust']
-    plt.subplots_adjust(left=subplot_config['left'],
-                        right=subplot_config['right'],
-                        bottom=subplot_config['bottom'],
-                        top=subplot_config['top'])
+    plt.subplots_adjust(
+        left=subplot_config['left'],
+        right=subplot_config['right'],
+        bottom=subplot_config['bottom'],
+        top=subplot_config['top']
+    )
     
     return fig
 
@@ -704,17 +754,12 @@ def main():
         if uploaded_file is not None and df is not None and iniciar_analise:
             st.header(config['ui']['results_header'])
 
-            # Filtrar os dados
+            # Filtrar os dados novamente
             df_filtered = filter_data(df, operadores_selecionados, alimentos_selecionados, dietas_selecionadas, start_date, end_date)
             
             if df_filtered.empty:
                 st.warning("Não há dados suficientes para gerar a análise.")
             else:
-                # Forçar a conversão de strings para números em todas as colunas numéricas
-                df_filtered = df_filtered.copy()
-                df_filtered[['PREVISTO (KG)', 'REALIZADO (KG)', 'PREVISTO (KG).1', 'REALIZADO (KG).1', 'DIFERENÇA (KG)', 'DIFERENÇA (%)']] = \
-                df_filtered[['PREVISTO (KG)', 'REALIZADO (KG)', 'PREVISTO (KG).1', 'REALIZADO (KG).1', 'DIFERENÇA (KG)', 'DIFERENÇA (%)']].apply(pd.to_numeric, errors='coerce')
-                
                 # Calcular a média ponderada
                 weighted_average_df = calculate_weighted_average_with_weights(df_filtered, pesos_relativos, config)
                 
@@ -732,7 +777,7 @@ def main():
                     # Exibir estatísticas na primeira coluna
                     with col1:
                         st.subheader(config['ui']['statistics_title'])
-                        stats_df = create_statistics_dataframe(weighted_average_df, remover_outliers)
+                        stats_df = create_statistics_dataframe(weighted_average_df, remover_outliers, config=config)
                         st.write(stats_df)
 
                     # Exibir pesos relativos na segunda coluna
