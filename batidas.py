@@ -693,14 +693,12 @@ def main():
     2. Configuração da página e layout da interface do usuário.
     3. Gerenciamento do upload do arquivo Excel e processamento dos dados via `load_and_process_data()`.
     4. Filtragem dos dados com base nos operadores, alimentos, dietas e datas selecionadas pelo usuário.
-    5. Cálculo das médias ponderadas das diferenças percentuais via `calculate_weighted_average_with_weights()`.
-    6. Geração e exibição de um histograma usando a função `create_histogram()`.
-    7. Cálculo e exibição das principais estatísticas com opção de exportação para CSV.
-    8. Permite salvar o histograma como PNG e exibe links para download dos arquivos gerados.
+    5. Configuração dos pesos relativos uma única vez para os tipos de alimento.
+    6. Cálculo das médias ponderadas das diferenças percentuais via `calculate_weighted_average_with_weights()`.
+    7. Geração e exibição de um histograma usando a função `create_histogram()`.
+    8. Cálculo e exibição das principais estatísticas com opção de exportação para CSV.
+    9. Permite salvar o histograma como PNG e exibe links para download dos arquivos gerados.
     """
-
-    # Carregar configurações
-    config = read_config()
 
     # Configuração da página Streamlit
     st.set_page_config(page_title=config['ui']['page_title'], layout="wide")
@@ -719,84 +717,89 @@ def main():
             type=config['ui']['file_uploader']['allowed_types']
         )
 
-        if uploaded_file is not None:
-            # Carregar e processar o arquivo Excel
-            df = load_and_process_data(uploaded_file)
-            
-            if df is not None:
-                st.success("Arquivo carregado com sucesso!")
+        # Verificação inicial: se não houver arquivo, encerre a função
+        if uploaded_file is None:
+            st.warning("selecione o arquivo .XLSX para análise.")
+            return  # Encerra a função principal se não houver arquivo carregado
 
-                # Filtros de data
-                min_date = df[config['excel_columns']['date']].min().date()
-                max_date = df[config['excel_columns']['date']].max().date()
-                start_date, end_date = st.date_input(
-                    config['ui']['date_input']['label'],
-                    [min_date, max_date],
-                    min_value=min_date,
-                    max_value=max_date
-                )
+        # Carregar e processar o arquivo Excel
+        df = load_and_process_data(uploaded_file)
 
-                # Seleção de operadores
-                operadores = ['Todos'] + sorted(df[config['excel_columns']['operator']].unique().tolist())
-                operadores_selecionados = st.selectbox(
-                    config['ui']['multiselect']['operator_label'],
-                    operadores
-                )
+        if df is not None:
+            st.success("Arquivo carregado com sucesso!")
 
-                # Seleção de alimentos
-                alimentos = ['Todos'] + sorted(df[config['excel_columns']['alimento']].unique().tolist())
-                alimentos_selecionados = st.selectbox(
-                    config['ui']['multiselect']['food_label'],
-                    alimentos
-                )
+            # Filtros de data
+            min_date = df[config['excel_columns']['date']].min().date()
+            max_date = df[config['excel_columns']['date']].max().date()
+            start_date, end_date = st.date_input(
+                config['ui']['date_input']['label'],
+                [min_date, max_date],
+                min_value=min_date,
+                max_value=max_date
+            )
 
-                # Seleção de dietas
-                dietas = ['Todos'] + sorted(df[config['excel_columns']['nome']].unique().tolist())
-                dietas_selecionadas = st.selectbox(
-                    config['ui']['multiselect']['diet_label'],
-                    dietas
-                )
+            # Seleção de operadores
+            operadores = ['Todos'] + sorted(df[config['excel_columns']['operator']].unique().tolist())
+            operadores_selecionados = st.selectbox(
+                config['ui']['multiselect']['operator_label'],
+                operadores
+            )
 
-                # Encapsular em lista para uso com df.isin()
-                operadores_selecionados = [operadores_selecionados]
-                alimentos_selecionados = [alimentos_selecionados]
-                dietas_selecionadas = [dietas_selecionadas]
+            # Seleção de alimentos
+            alimentos = ['Todos'] + sorted(df[config['excel_columns']['alimento']].unique().tolist())
+            alimentos_selecionados = st.selectbox(
+                config['ui']['multiselect']['food_label'],
+                alimentos
+            )
 
-                # Filtrar os dados e armazenar o resultado em `df_filtered`
-                df_filtered = filter_data(df, operadores_selecionados, alimentos_selecionados, dietas_selecionadas, start_date, end_date)
+            # Seleção de dietas
+            dietas = ['Todos'] + sorted(df[config['excel_columns']['nome']].unique().tolist())
+            dietas_selecionadas = st.selectbox(
+                config['ui']['multiselect']['diet_label'],
+                dietas
+            )
 
-                # Verificar se o DataFrame filtrado está vazio
-                if df_filtered.empty:
-                    st.warning("Não há dados suficientes para análise com os filtros selecionados.")
-                    return  # Finaliza a função principal para evitar execuções subsequentes
-                else:
-                    st.success("Filtro aplicado com sucesso!")
+            # Encapsular em lista para uso com df.isin()
+            operadores_selecionados = [operadores_selecionados]
+            alimentos_selecionados = [alimentos_selecionados]
+            dietas_selecionadas = [dietas_selecionadas]
 
-                # Configuração dos pesos relativos para os tipos de alimentos
-                st.subheader(config['ui']['food_weights_subheader'])
-                tipos_alimentos = df[config['excel_columns']['tipo']].unique().tolist()
-                pesos_relativos = {
-                    tipo: st.slider(
-                        f"Peso para tipo de alimento '{tipo}':", 
-                        min_value=config['slider']['min_value'],  # Valor mínimo definido no config.yaml
-                        max_value=config['slider']['max_value'],  # Valor máximo definido no config.yaml
-                        value=config['slider']['default_value'], 
-                        step=config['slider']['step']  # Step definido no config.yaml
-                    ) for tipo in tipos_alimentos
-                }
+            # Filtrar os dados e armazenar o resultado em `df_filtered`
+            df_filtered = filter_data(df, operadores_selecionados, alimentos_selecionados, dietas_selecionadas, start_date, end_date)
 
-                # Opção para remover outliers
-                remover_outliers = st.checkbox(
-                    config['ui']['remove_outliers']['label'],
-                    help=config['ui']['remove_outliers']['help']
-                )
+            # Verificar se o DataFrame filtrado está vazio
+            if df_filtered.empty:
+                st.warning("Não há dados suficientes para análise com os filtros selecionados.")
+                return  # Finaliza a função principal para evitar execuções subsequentes
 
-                # Botão para iniciar a análise
-                iniciar_analise = st.button(config['ui']['generate_button'])
+            # Caso não esteja vazio, prosseguir
+            st.success("Filtro aplicado com sucesso!")
+
+            # Configuração dos pesos relativos para os tipos de alimentos - faz isso uma única vez
+            st.subheader(config['ui']['food_weights_subheader'])
+            tipos_alimentos = df[config['excel_columns']['tipo']].unique().tolist()
+            pesos_relativos = {
+                tipo: st.slider(
+                    f"Peso para tipo de alimento '{tipo}':", 
+                    min_value=config['slider']['min_value'],  # Valor mínimo definido no config.yaml
+                    max_value=config['slider']['max_value'],  # Valor máximo definido no config.yaml
+                    value=config['slider']['default_value'], 
+                    step=config['slider']['step']  # Step definido no config.yaml
+                ) for tipo in tipos_alimentos
+            }
+
+            # Opção para remover outliers
+            remover_outliers = st.checkbox(
+                config['ui']['remove_outliers']['label'],
+                help=config['ui']['remove_outliers']['help']
+            )
+
+            # Botão para iniciar a análise
+            iniciar_analise = st.button(config['ui']['generate_button'])
 
     with col2:
         # Apenas proceder com a análise se o botão for pressionado e se os dados estiverem carregados e filtrados
-        if uploaded_file is not None and df is not None and iniciar_analise:
+        if df is not None and iniciar_analise:
             st.header(config['ui']['results_header'])
 
             # Calcular a média ponderada das diferenças percentuais
