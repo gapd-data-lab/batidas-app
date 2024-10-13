@@ -772,28 +772,27 @@ def main():
                 else:
                     st.success("Filtro aplicado com sucesso!")
 
-                    # Configuração de pesos relativos para tipos de alimentos
-                    st.subheader(config['ui']['food_weights_subheader'])
-                    tipos_alimentos = df[config['excel_columns']['tipo']].unique().tolist()
-                    pesos_relativos = {}
-                    for tipo in tipos_alimentos:
-                        peso = st.slider(
-                            f"Peso para tipo de alimento '{tipo}':", 
-                            min_value=config['slider']['min_value'],  # Valor mínimo definido no config.yaml
-                            max_value=config['slider']['max_value'],  # Valor máximo definido no config.yaml
-                            value=config['slider']['default_value'], 
-                            step=config['slider']['step']  # Step definido no config.yaml
-                        )
-                        pesos_relativos[tipo] = peso
+                # Configuração dos pesos relativos para os tipos de alimentos
+                st.subheader(config['ui']['food_weights_subheader'])
+                tipos_alimentos = df[config['excel_columns']['tipo']].unique().tolist()
+                pesos_relativos = {
+                    tipo: st.slider(
+                        f"Peso para tipo de alimento '{tipo}':", 
+                        min_value=config['slider']['min_value'],  # Valor mínimo definido no config.yaml
+                        max_value=config['slider']['max_value'],  # Valor máximo definido no config.yaml
+                        value=config['slider']['default_value'], 
+                        step=config['slider']['step']  # Step definido no config.yaml
+                    ) for tipo in tipos_alimentos
+                }
 
-                    # Opção para remover outliers
-                    remover_outliers = st.checkbox(
-                        config['ui']['remove_outliers']['label'],
-                        help=config['ui']['remove_outliers']['help']
-                    )
+                # Opção para remover outliers
+                remover_outliers = st.checkbox(
+                    config['ui']['remove_outliers']['label'],
+                    help=config['ui']['remove_outliers']['help']
+                )
 
-                    # Botão para iniciar a análise
-                    iniciar_analise = st.button(config['ui']['generate_button'])
+                # Botão para iniciar a análise
+                iniciar_analise = st.button(config['ui']['generate_button'])
 
     with col2:
         # Apenas proceder com a análise se o botão for pressionado e se os dados estiverem carregados e filtrados
