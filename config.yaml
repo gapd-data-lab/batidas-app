@@ -25,7 +25,6 @@ excel_columns:
 # CONFIGURAÇÃO DOS PARÂMETROS DE ANÁLISE
 # ----------------------------------------------------------------------
 analysis:
-  default_weight: 1.0                     # Peso padrão inicial para os sliders de alimentos
   tolerance_threshold: 3                  # Limite de tolerância em % para a análise de diferenças
   outlier_threshold: 1.5                  # Limite para definir outliers (em desvio interquartil)
   skip_rows: 2                            # Número de linhas a serem puladas ao carregar o arquivo Excel
@@ -59,6 +58,7 @@ numeric_columns:
 slider:
   min_value: 0.5                          # Valor mínimo permitido para os sliders
   max_value: 3.5                          # Valor máximo permitido para os sliders
+  default_value: 1.0                      # Valor padrão para os sliders
   step: 0.1                               # Incremento de ajuste para os sliders (precisão)
 
 # ----------------------------------------------------------------------
@@ -70,8 +70,6 @@ weighted_average:
   diferenca_percentual_column: 'DIFERENÇA (%)'  # Coluna de diferença percentual
   pesos_relativos_column: 'TIPO'          # Coluna usada para os pesos relativos
   peso_multiplicador: true                # Se True, multiplica o peso pelo valor previsto
-  peso_relativo: 1.0                      # Multiplicador global dos pesos relativos
-  outlier_threshold: 1.5                  # Limite para remoção de outliers (mesmo valor de "analysis")
 
 # ----------------------------------------------------------------------
 # CONFIGURAÇÃO DA INTERFACE DO USUÁRIO

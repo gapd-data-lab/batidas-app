@@ -777,7 +777,7 @@ def main():
                         f"Peso para tipo de alimento '{tipo}':", 
                         min_value=config['slider']['min_value'],  # Valor mínimo definido no config.yaml
                         max_value=config['slider']['max_value'],  # Valor máximo definido no config.yaml
-                        value=config['analysis']['default_weight'], 
+                        value=config['slider']['default_value'], 
                         step=config['slider']['step']  # Step definido no config.yaml
                     )
                     pesos_relativos[tipo] = peso
