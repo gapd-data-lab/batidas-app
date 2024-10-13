@@ -685,7 +685,6 @@ def save_statistics_as_csv(stats_df):
     return href
 
 def main():
-
     """
     Função principal que controla a execução do programa e a interação com o usuário via Streamlit.
 
@@ -698,9 +697,6 @@ def main():
     6. Geração e exibição de um histograma usando a função `create_histogram()`.
     7. Cálculo e exibição das principais estatísticas com opção de exportação para CSV.
     8. Permite salvar o histograma como PNG e exibe links para download dos arquivos gerados.
-
-    A função serve como ponto de entrada para o programa e gerencia todas as interações entre o usuário
-    e os dados fornecidos, desde a configuração inicial até a geração dos resultados.
     """
 
     # Carregar configurações
@@ -711,19 +707,20 @@ def main():
     
     st.title(config['ui']['page_title'])
 
-    # Criar duas colunas principais
+    # Criar duas colunas principais para a interface
     col1, col2 = st.columns([1, 3])  # Proporção de 1:3 entre as colunas
 
     with col1:
         st.header(config['ui']['analysis_config_header'])
         
-        # Upload do arquivo
+        # Upload do arquivo Excel
         uploaded_file = st.file_uploader(
             config['ui']['file_uploader']['label'], 
             type=config['ui']['file_uploader']['allowed_types']
         )
 
         if uploaded_file is not None:
+            # Carregar e processar o arquivo Excel
             df = load_and_process_data(uploaded_file)
             
             if df is not None:
@@ -765,55 +762,58 @@ def main():
                 alimentos_selecionados = [alimentos_selecionados]
                 dietas_selecionadas = [dietas_selecionadas]
 
-                # Filtrar os dados
+                # Filtrar os dados e armazenar o resultado em `df_filtered`
                 df_filtered = filter_data(df, operadores_selecionados, alimentos_selecionados, dietas_selecionadas, start_date, end_date)
 
-                # Configuração de pesos relativos com valores do config.yaml
-                st.subheader(config['ui']['food_weights_subheader'])
-                tipos_alimentos = df[config['excel_columns']['tipo']].unique().tolist()
-                pesos_relativos = {}
-                for tipo in tipos_alimentos:
-                    peso = st.slider(
-                        f"Peso para tipo de alimento '{tipo}':", 
-                        min_value=config['slider']['min_value'],  # Valor mínimo definido no config.yaml
-                        max_value=config['slider']['max_value'],  # Valor máximo definido no config.yaml
-                        value=config['slider']['default_value'], 
-                        step=config['slider']['step']  # Step definido no config.yaml
+                # Verificar se o DataFrame filtrado está vazio
+                if df_filtered.empty:
+                    st.warning("Não há dados suficientes para análise com os filtros selecionados.")
+                else:
+                    st.success("Filtro aplicado com sucesso!")
+
+                    # Configuração de pesos relativos para tipos de alimentos
+                    st.subheader(config['ui']['food_weights_subheader'])
+                    tipos_alimentos = df[config['excel_columns']['tipo']].unique().tolist()
+                    pesos_relativos = {}
+                    for tipo in tipos_alimentos:
+                        peso = st.slider(
+                            f"Peso para tipo de alimento '{tipo}':", 
+                            min_value=config['slider']['min_value'],  # Valor mínimo definido no config.yaml
+                            max_value=config['slider']['max_value'],  # Valor máximo definido no config.yaml
+                            value=config['slider']['default_value'], 
+                            step=config['slider']['step']  # Step definido no config.yaml
+                        )
+                        pesos_relativos[tipo] = peso
+
+                    # Opção para remover outliers
+                    remover_outliers = st.checkbox(
+                        config['ui']['remove_outliers']['label'],
+                        help=config['ui']['remove_outliers']['help']
                     )
-                    pesos_relativos[tipo] = peso
 
-                # Opção para remover outliers
-                remover_outliers = st.checkbox(
-                    config['ui']['remove_outliers']['label'],
-                    help=config['ui']['remove_outliers']['help']
-                )
-
-                # Botão para iniciar a análise
-                iniciar_analise = st.button(config['ui']['generate_button'])
+                    # Botão para iniciar a análise
+                    iniciar_analise = st.button(config['ui']['generate_button'])
 
     with col2:
+        # Apenas proceder com a análise se o botão for pressionado e se os dados estiverem carregados e filtrados
         if uploaded_file is not None and df is not None and iniciar_analise:
             st.header(config['ui']['results_header'])
 
-            # Filtrar os dados novamente
-            df_filtered = filter_data(df, operadores_selecionados, alimentos_selecionados, dietas_selecionadas, start_date, end_date)
-            
             if df_filtered.empty:
                 st.warning("Não há dados suficientes para gerar a análise.")
             else:
-                # Calcular a média ponderada
+                # Calcular a média ponderada das diferenças percentuais
                 weighted_average_df = calculate_weighted_average_with_weights(df_filtered, pesos_relativos, config)
-                
+
                 if weighted_average_df is not None:
-                    # Criar e exibir o histograma
+                    # Criar e exibir o histograma com os dados filtrados
                     fig = create_histogram(weighted_average_df, start_date, end_date, remover_outliers, pesos_relativos, config=config)
-                    # Continuar com a exibição do gráfico ou salvar a figura, conforme necessário
                     st.pyplot(fig)
-                    
+
                     # Adicionar opção para salvar o histograma
                     st.markdown(save_histogram_as_image(fig), unsafe_allow_html=True)
 
-                    # Criar duas colunas para exibir as tabelas lado a lado
+                    # Criar duas colunas para exibir as tabelas de estatísticas e pesos lado a lado
                     col1, col2 = st.columns(2)
 
                     # Exibir estatísticas na primeira coluna
@@ -828,7 +828,7 @@ def main():
                         pesos_df = pd.DataFrame(list(pesos_relativos.items()), columns=['Tipo de Alimento', 'Peso Relativo'])
                         st.write(pesos_df)
 
-                    # Adicionar data de geração e opção para download
+                    # Adicionar data de geração e opção para download dos arquivos CSV
                     data_geracao = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     stats_df['Data de Geração'] = data_geracao
                     pesos_df['Data de Geração'] = data_geracao
