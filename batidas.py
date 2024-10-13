@@ -67,6 +67,13 @@ def load_and_process_data(uploaded_file):
         if config['analysis']['remove_first_column']:
             df = df.iloc[:, 1:]
 
+        # Remover a coluna 'BALANÇA' (coluna S), se existir
+        """
+        Esta coluna é vazia no arquivo processada e pode causar problemas em razão das células vazias
+        """
+        if 'BALANÇA' in df.columns:
+            df = df.drop(columns=['BALANÇA'])
+
         # Verificar se as colunas necessárias estão presentes
         required_columns = list(config['excel_columns'].values())
         missing_columns = [col for col in required_columns if col not in df.columns]
@@ -76,8 +83,7 @@ def load_and_process_data(uploaded_file):
         # Converter colunas para tipos numéricos
         df[config['excel_columns']['date']] = pd.to_datetime(df[config['excel_columns']['date']], errors='coerce')
 
-        # Converter as colunas numéricas corretamente
-# Converter as colunas numéricas, incluindo as duplicadas
+        # Converter as colunas numéricas, incluindo as duplicadas
         df['PREVISTO (KG)'] = pd.to_numeric(df['PREVISTO (KG)'], errors='coerce')
         df['PREVISTO (KG).1'] = pd.to_numeric(df['PREVISTO (KG).1'], errors='coerce')  # Coluna duplicada
         df['REALIZADO (KG)'] = pd.to_numeric(df['REALIZADO (KG)'], errors='coerce')
@@ -274,12 +280,11 @@ def calculate_weighted_average_with_weights(df, pesos_relativos, config):
         grouped = df.groupby(config['excel_columns']['cod_batida'])
         total_planned_quantity = grouped['PESO AJUSTADO'].sum()
         total_contribution = grouped['CONTRIBUIÇÃO'].sum()
-        weighted_average = (total_contribution / total_planned_quantity) * 100
-        
+        calculated_weighted_avg = (total_contribution / total_planned_quantity) * 100        
         # Retornar DataFrame com a média ponderada
         weighted_averages = pd.DataFrame({
             config['excel_columns']['cod_batida']: total_planned_quantity.index,
-            'MÉDIA PONDERADA (%)': weighted_average.fillna(0)
+            'MÉDIA PONDERADA (%)': calculated_weighted_avg.fillna(0).astype(float)        
         })
         
         return weighted_averages
@@ -336,7 +341,11 @@ def create_statistics_dataframe(weighted_average_df, remove_outliers=False):
         ]
     }
 
-    return pd.DataFrame(stats_data)
+    # Garantir que os valores estão no formato numérico adequado
+    stats_df = pd.DataFrame(stats_data)
+    stats_df['Valor'] = pd.to_numeric(stats_df['Valor'], errors='coerce')  # Converter valores para numérico
+
+    return stats_df
 
 def remove_outliers_from_df(df, column):
     """
@@ -407,9 +416,12 @@ def calculate_histogram_bins(data):
     na regra de Freedman-Diaconis, que leva em conta o intervalo interquartil e o tamanho da amostra.
     """
 
+    # Compute the first and third quartiles and the IQR
     q1, q3 = np.percentile(data, [25, 75])
     iqr = q3 - q1
-    lower_bound = 0  # Limite inferior definido como 0 para valores positivos
+
+    # Define the lower bound as the minimum non-negative value and calculate upper bound
+    lower_bound = data[data >= 0].min()
     upper_bound = q3 + 1.5 * iqr
 
     # Ajustar os limites para o número inteiro mais próximo
@@ -694,7 +706,9 @@ def main():
                 st.warning("Não há dados suficientes para gerar a análise.")
             else:
                 # Forçar a conversão de strings para números em todas as colunas numéricas
-                df_filtered[['PREVISTO (KG)', 'REALIZADO (KG)', 'PREVISTO (KG).1', 'REALIZADO (KG).1', 'DIFERENÇA (KG)', 'DIFERENÇA (%)']] = df_filtered[['PREVISTO (KG)', 'REALIZADO (KG)', 'PREVISTO (KG).1', 'REALIZADO (KG).1', 'DIFERENÇA (KG)', 'DIFERENÇA (%)']].apply(pd.to_numeric, errors='coerce')
+                df_filtered = df_filtered.copy()
+                df_filtered[['PREVISTO (KG)', 'REALIZADO (KG)', 'PREVISTO (KG).1', 'REALIZADO (KG).1', 'DIFERENÇA (KG)', 'DIFERENÇA (%)']] = \
+                df_filtered[['PREVISTO (KG)', 'REALIZADO (KG)', 'PREVISTO (KG).1', 'REALIZADO (KG).1', 'DIFERENÇA (KG)', 'DIFERENÇA (%)']].apply(pd.to_numeric, errors='coerce')
                 
                 # Calcular a média ponderada
                 weighted_average_df = calculate_weighted_average_with_weights(df_filtered, pesos_relativos, config)
