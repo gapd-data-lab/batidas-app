@@ -64,6 +64,8 @@ def load_and_process_data(uploaded_file):
         # Carregar as configurações relevantes
         analysis_config = config['analysis']
         excel_columns = config['excel_columns']
+        numeric_columns = config['numeric_columns']  # Nova chave no arquivo de configuração
+
         skip_rows = analysis_config['skip_rows']
         remove_first_column = analysis_config['remove_first_column']
         columns_to_remove = analysis_config.get('columns_to_remove', [])
@@ -92,11 +94,7 @@ def load_and_process_data(uploaded_file):
         date_column = excel_columns['date']
         df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
 
-        # Converter as colunas numéricas, incluindo as duplicadas
-        numeric_columns = [
-            'PREVISTO (KG)', 'PREVISTO (KG).1', 'REALIZADO (KG)',
-            'REALIZADO (KG).1', 'DIFERENÇA (KG)', 'DIFERENÇA (%)', 'CUSTO', 'CUSTO_KG'
-        ]
+        # Converter colunas numéricas especificadas na configuração
         for col in numeric_columns:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce')

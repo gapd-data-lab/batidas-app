@@ -33,6 +33,19 @@ analysis:
   columns_to_remove: ['BALANÇA']          # Coluna a ser removida em função de estar vazia (não conter dados)
 
 # ----------------------------------------------------------------------
+# CONFIGURAÇÃO DAS COLUNAS NUMÉRICAS
+# ----------------------------------------------------------------------
+numeric_columns:
+  - 'PREVISTO (KG)'
+  - 'PREVISTO (KG).1'
+  - 'REALIZADO (KG)'
+  - 'REALIZADO (KG).1'
+  - 'DIFERENÇA (KG)'
+  - 'DIFERENÇA (%)'
+  - 'CUSTO'
+  - 'CUSTO_KG'
+
+# ----------------------------------------------------------------------
 # CONFIGURAÇÃO DOS SLIDERS DE PESOS RELATIVOS
 # ----------------------------------------------------------------------
 slider:
