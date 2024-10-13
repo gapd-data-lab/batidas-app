@@ -68,9 +68,6 @@ def load_and_process_data(uploaded_file):
             df = df.iloc[:, 1:]
 
         # Remover a coluna 'BALANÇA' (coluna S), se existir
-        """
-        Esta coluna é vazia no arquivo processada e pode causar problemas em razão das células vazias
-        """
         if 'BALANÇA' in df.columns:
             df = df.drop(columns=['BALANÇA'])
 
