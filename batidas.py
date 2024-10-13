@@ -61,15 +61,22 @@ def load_and_process_data(uploaded_file):
     """
 
     try:
+        # Carregar as configurações relevantes
+        analysis_config = config['analysis']
+        excel_columns = config['excel_columns']
+
+        skip_rows = analysis_config['skip_rows']
+        remove_first_column = analysis_config['remove_first_column']
+        columns_to_remove = analysis_config.get('columns_to_remove', [])
+
         # Carregar o arquivo Excel
-        df = pd.read_excel(uploaded_file, skiprows=config['analysis']['skip_rows'])
+        df = pd.read_excel(uploaded_file, skiprows=skip_rows)
 
         # Remover a primeira coluna, se especificado
-        if config['analysis']['remove_first_column']:
+        if remove_first_column:
             df = df.iloc[:, 1:]
 
         # Remover colunas especificadas no arquivo de configuração
-        columns_to_remove = config['analysis'].get('columns_to_remove', [])
         removed_columns = []  # Lista para armazenar as colunas removidas
         for col in columns_to_remove:
             if col in df.columns:
@@ -77,23 +84,23 @@ def load_and_process_data(uploaded_file):
                 removed_columns.append(col)
 
         # Verificar se as colunas necessárias estão presentes
-        required_columns = list(config['excel_columns'].values())
+        required_columns = list(excel_columns.values())
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
             raise ValueError(f"Colunas ausentes no arquivo: {', '.join(missing_columns)}")
 
-        # Converter colunas para tipos numéricos
-        df[config['excel_columns']['date']] = pd.to_datetime(df[config['excel_columns']['date']], errors='coerce')
+        # Converter colunas para tipos numéricos e de datas
+        date_column = excel_columns['date']
+        df[date_column] = pd.to_datetime(df[date_column], errors='coerce')
 
         # Converter as colunas numéricas, incluindo as duplicadas
-        df['PREVISTO (KG)'] = pd.to_numeric(df['PREVISTO (KG)'], errors='coerce')
-        df['PREVISTO (KG).1'] = pd.to_numeric(df['PREVISTO (KG).1'], errors='coerce')  # Coluna duplicada
-        df['REALIZADO (KG)'] = pd.to_numeric(df['REALIZADO (KG)'], errors='coerce')
-        df['REALIZADO (KG).1'] = pd.to_numeric(df['REALIZADO (KG).1'], errors='coerce')  # Coluna duplicada
-        df['DIFERENÇA (KG)'] = pd.to_numeric(df['DIFERENÇA (KG)'], errors='coerce')
-        df['DIFERENÇA (%)'] = pd.to_numeric(df['DIFERENÇA (%)'], errors='coerce')
-        df['CUSTO'] = pd.to_numeric(df['CUSTO'], errors='coerce')
-        df['CUSTO_KG'] = pd.to_numeric(df['CUSTO_KG'], errors='coerce')
+        numeric_columns = [
+            'PREVISTO (KG)', 'PREVISTO (KG).1', 'REALIZADO (KG)',
+            'REALIZADO (KG).1', 'DIFERENÇA (KG)', 'DIFERENÇA (%)', 'CUSTO', 'CUSTO_KG'
+        ]
+        for col in numeric_columns:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
 
         return df
 
