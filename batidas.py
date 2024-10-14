@@ -41,26 +41,17 @@ config = read_config()
 
 def preprocess_dataframe(df, config):
     """
-    Realiza o pré-processamento de um DataFrame, incluindo conversão de colunas
-    para numéricas e verificação de colunas necessárias.
+    Pré-processa um DataFrame, convertendo colunas para numéricas e verificando colunas obrigatórias.
 
-    Args:
-    -----
-    df : DataFrame
-        O DataFrame que será processado.
+    Parâmetros:
+    df (DataFrame): DataFrame a ser processado.
+    config (dict): Configurações com colunas numéricas e obrigatórias.
 
-    config : dict
-        Dicionário de configuração contendo as informações necessárias, como
-        colunas numéricas e colunas obrigatórias.
+    Retorna:
+    DataFrame: DataFrame processado.
 
-    Returns:
-    --------
-    DataFrame
-        O DataFrame processado, com colunas convertidas e verificadas.
-
-    Levanta:
-    --------
-    ValueError: Se alguma das colunas obrigatórias estiver ausente.
+    Exceções:
+    ValueError: Se faltar alguma coluna obrigatória.
     """
     # Carregar configurações de colunas numéricas e obrigatórias
     numeric_columns = config['numeric_columns']
@@ -81,23 +72,22 @@ def preprocess_dataframe(df, config):
 
 def load_and_process_data(uploaded_file):
     """
-    Carrega e processa os dados de um arquivo Excel carregado pelo usuário.
+    Carrega e processa dados de um arquivo Excel.
 
-    Args:
-    uploaded_file: O arquivo Excel (.xlsx) carregado pelo usuário via interface Streamlit.
+    Parâmetros:
+    uploaded_file: Arquivo Excel (.xlsx) carregado pelo usuário.
 
-    Returns:
-    DataFrame: Um DataFrame Pandas contendo os dados processados e prontos para análise.
+    Retorna:
+    DataFrame: Dados processados e prontos para análise.
 
     Processamento:
-    1. Carrega o arquivo Excel, pulando o número de linhas configurado.
-    2. Remove a primeira coluna, se especificado na configuração.
-    3. Remove colunas especificadas no arquivo de configuração.
-    4. Verifica se todas as colunas necessárias estão presentes no arquivo.
-    5. Converte colunas específicas (como valores numéricos e datas) para os tipos apropriados.
+    1. Carrega o Excel, pulando linhas conforme configuração.
+    2. Remove primeira coluna, se configurado.
+    3. Remove colunas especificadas na configuração.
+    4. Verifica presença de colunas necessárias.
+    5. Converte colunas para tipos apropriados.
 
-    Exibe uma mensagem de erro se o arquivo não contém as colunas esperadas ou se houver qualquer
-    problema ao carregar os dados.
+    Exibe erro se faltar colunas ou houver problemas no carregamento.
     """
 
     try:
@@ -169,113 +159,45 @@ def calculate_weighted_average_with_weights(df, pesos_relativos, config):
     """
     Calcula a média ponderada para cada batida com base nos pesos relativos dos tipos de alimento.
 
-    Args:
-    - df (DataFrame): DataFrame contendo os dados de entrada, incluindo informações como quantidade prevista,
-                      quantidade realizada, diferença percentual e tipo de alimento.
-    - pesos_relativos (dict): Dicionário contendo os pesos relativos de cada tipo de alimento. Os pesos indicam
-                              a importância relativa de cada tipo no cálculo da média ponderada.
-    - config (dict): Dicionário de configuração que contém parâmetros importantes, como nomes das colunas,
-                     multiplicadores usados no cálculo e limites para a remoção de outliers.
+    Parâmetros:
+    - df (DataFrame): Dados de entrada (quantidades previstas, realizadas, diferenças percentuais, tipos de alimento).
+    - pesos_relativos (dict): Pesos relativos de cada tipo de alimento.
+    - config (dict): Configurações (nomes de colunas, parâmetros de cálculo).
 
-    Returns:
-    - DataFrame: DataFrame contendo as médias ponderadas para cada batida ('COD. BATIDA').
+    Retorna:
+    - DataFrame: Médias ponderadas para cada batida ('COD. BATIDA').
 
-    Descrição do Cálculo:
-    Esta função calcula uma média ponderada das diferenças percentuais entre o valor previsto e o realizado 
-    para cada batida, utilizando os pesos relativos dos tipos de alimentos para ajustar a importância de 
-    cada item no resultado final. O cálculo segue os seguintes passos:
+    Processo de cálculo:
+    1. Mapeia tipos de alimento para seus pesos.
+    2. Ajusta valores previstos com pesos (se configurado).
+    3. Calcula contribuição: CONTRIBUIÇÃO = PESO AJUSTADO * (DIFERENÇA (%) ABS * PESO RELATIVO) / 100
+    4. Agrupa por 'COD. BATIDA' e calcula média ponderada:
+       MÉDIA PONDERADA (%) = (soma das contribuições / soma dos pesos ajustados) * 100
+    5. Substitui NaN por zero no resultado.
 
-    1. **Mapeamento dos Pesos Relativos**:
-       A coluna que contém os tipos de alimento é mapeada para seus respectivos pesos relativos, conforme definido
-       no dicionário `pesos_relativos`. Cada valor de tipo de alimento na coluna é substituído por seu peso correspondente.
-       Se um tipo de alimento não for encontrado no dicionário, o valor resultante será `NaN`.
+    Exemplo de cálculo:
+    Dados de entrada:
+    COD. BATIDA | PREVISTO (KG) | REALIZADO (KG) | DIFERENÇA (%) | TIPO
+    1           | 100           | 90             | -10           | A
+    1           | 150           | 140            | -6.67         | B
+    2           | 200           | 210            | 5             | A
+    2           | 250           | 260            | 4             | C
 
-       Exemplo:
-       ```
-       tipos_alimentos = ['Tipo A', 'Tipo B', 'Tipo C']
-       pesos_relativos = {'Tipo A': 1.2, 'Tipo B': 0.8, 'Tipo C': 1.5}
-       ```
+    Pesos relativos: A: 1.2, B: 0.8, C: 1.5
 
-       O DataFrame resultante terá uma coluna `'PESO RELATIVO'` com os valores [1.2, 0.8, 1.5] correspondentes aos tipos.
+    Cálculo para COD. BATIDA 1:
+    1. PESO AJUSTADO: 100 * 1.2 = 120, 150 * 0.8 = 120
+    2. CONTRIBUIÇÃO: (120 * 10 * 1.2) / 100 = 14.4, (120 * 6.67 * 0.8) / 100 = 6.4
+    3. MÉDIA PONDERADA = (14.4 + 6.4) / (120 + 120) * 100 = 8.67%
 
-    2. **Aplicação do Multiplicador de Pesos**:
-       Se a configuração `peso_multiplicador` for ativada (`True`), o valor previsto é ajustado multiplicando-o
-       pelo peso relativo, gerando a coluna `'PESO AJUSTADO'`. Caso contrário, o valor ajustado será igual ao valor previsto.
+    Resultado final:
+    COD. BATIDA | MÉDIA PONDERADA (%)
+    1           | 8.67
+    2           | 5.71
 
-       - **Com `peso_multiplicador=True`**:
-         ```
-         PESO AJUSTADO = PREVISTO (KG) * PESO RELATIVO
-         ```
-       - **Com `peso_multiplicador=False`**:
-         ```
-         PESO AJUSTADO = PREVISTO (KG)
-         ```
-
-       Esse ajuste visa dar maior ou menor peso aos alimentos de acordo com sua importância, afetando diretamente 
-       o valor de contribuição para a média ponderada.
-
-    3. **Cálculo da Contribuição com Base na Diferença Percentual**:
-       A contribuição de cada item é calculada multiplicando o valor ajustado (`PESO AJUSTADO`) pela diferença
-       percentual absoluta (`DIFERENÇA (%) ABS`) e pelo peso relativo, dividindo o resultado por 100.
-
-       Fórmula:
-       ```
-       CONTRIBUIÇÃO = PESO AJUSTADO * (DIFERENÇA (%) ABS * PESO RELATIVO) / 100
-       ```
-       
-       - Isso assegura que diferenças maiores ou menores sejam proporcionalmente refletidas na média ponderada,
-         e que alimentos com maior peso relativo tenham impacto maior na contribuição final.
-
-    4. **Agrupamento e Cálculo da Média Ponderada por `COD. BATIDA`**:
-       O DataFrame é então agrupado por `'COD. BATIDA'` para calcular a média ponderada das diferenças para cada batida.
-       O agrupamento permite somar os valores de `'PESO AJUSTADO'` e `'CONTRIBUIÇÃO'` para cada batida.
-
-       Fórmulas:
-       - **Total Ajustado**:
-         ```
-         total_planned_quantity = grouped['PESO AJUSTADO'].sum()
-         ```
-       - **Total Contribuição**:
-         ```
-         total_contribution = grouped['CONTRIBUIÇÃO'].sum()
-         ```
-       - **Média Ponderada**:
-         ```
-         MÉDIA PONDERADA (%) = (total_contribution / total_planned_quantity) * 100
-         ```
-
-       O valor da média ponderada indica o desvio médio ajustado, considerando os pesos relativos de cada alimento.
-
-    5. **Tratamento de Valores `NaN` e Retorno dos Resultados**:
-       A média ponderada é calculada para cada batida, e valores `NaN` (que ocorrem, por exemplo, quando não há valor
-       previsto ajustado para dividir) são substituídos por zero. Isso é feito para evitar resultados indefinidos que
-       possam comprometer análises futuras.
-
-    Exemplo de Uso:
-    ```
-    df = pd.DataFrame({
-        'COD. BATIDA': [1, 1, 2, 2],
-        'PREVISTO (KG)': [100, 150, 200, 250],
-        'REALIZADO (KG)': [90, 140, 210, 260],
-        'DIFERENÇA (%)': [-10, -6.67, 5, 4],
-        'TIPO': ['Tipo A', 'Tipo B', 'Tipo A', 'Tipo C']
-    })
-    pesos_relativos = {'Tipo A': 1.2, 'Tipo B': 0.8, 'Tipo C': 1.5}
-    config = {'weighted_average': {...}, 'excel_columns': {'cod_batida': 'COD. BATIDA'}}
-    df_result = calculate_weighted_average_with_weights(df, pesos_relativos, config)
-    ```
-
-    Notas Adicionais:
-    - **Erro `KeyError`**: Caso o nome de alguma coluna não seja encontrado no DataFrame, um erro é levantado,
-      e uma mensagem é exibida ao usuário para ajudá-lo a corrigir o problema.
-    - **Tratamento de Exceções Genéricas**: Mensagens de erro são exibidas em casos de exceções inesperadas,
-      melhorando a experiência do usuário e auxiliando na depuração.
-    - **Valores Faltantes (`NaN`)**: Quando um tipo de alimento não é encontrado no dicionário de pesos, o valor
-      correspondente na coluna `'PESO RELATIVO'` será `NaN`. Recomenda-se tratar esses casos previamente, seja
-      ajustando o dicionário de pesos ou substituindo valores faltantes por um peso padrão.
-
-    A função é central para a análise dos dados de batidas e deve ser usada com atenção aos detalhes de configuração
-    e à qualidade dos dados de entrada, para garantir a precisão dos resultados.
+    Observações:
+    - Trata erros de chaves não encontradas e exceções genéricas.
+    - Recomenda-se tratar valores faltantes nos pesos relativos antes do uso.
     """
 
     try:
