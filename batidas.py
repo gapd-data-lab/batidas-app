@@ -607,13 +607,13 @@ def save_statistics_as_csv(stats_df):
 
 def save_dataframe_as_excel(df):
     """
-    Salva o DataFrame processado final como um arquivo Excel e retorna um link para download.
+    Salva o DataFrame processado final como um arquivo Excel e retorna um buffer para download.
 
     Args:
     df (DataFrame): DataFrame contendo os dados processados e organizados por BATIDAS e suas médias de diferenças.
 
     Returns:
-    str: Link para download do arquivo Excel gerado.
+    BytesIO: Um buffer contendo o arquivo Excel gerado.
     """
     buffer = io.BytesIO()
     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
@@ -642,11 +642,9 @@ def save_dataframe_as_excel(df):
             elif cell.value > config['statistics']['interval_limits']['high_2']:
                 cell.fill = black_fill
                 cell.font = white_font
-        
+
     buffer.seek(0)
-    b64 = base64.b64encode(buffer.getvalue()).decode()
-    href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="dados_processados.xlsx">- dados processados (excel)</a>'
-    return href
+    return buffer
 
 def main():
     """
@@ -789,22 +787,44 @@ def main():
                     pesos_df = pd.DataFrame(list(pesos_relativos.items()), columns=['Tipo de Alimento', 'Peso Relativo'])
                     st.write(pesos_df)
 
-                # Agrupar todas as opções de salvamento em um container abaixo da tabela de estatísticas
+                # Agrupar todas as opções de salvamento em um container bem estruturado
                 with st.container():
-                    st.subheader("downloads")
-                    
-                    # Adicionar opção para salvar o histograma
-                    st.markdown(save_histogram_as_image(fig), unsafe_allow_html=True)
+                    st.subheader("Downloads")
 
-                    # Adicionar opção para salvar as estatísticas em CSV
-                    data_geracao = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    stats_df['Data de Geração'] = data_geracao
-                    pesos_df['Data de Geração'] = data_geracao
-                    combined_df = pd.concat([stats_df, pesos_df], ignore_index=True, sort=False)
-                    st.markdown(save_statistics_as_csv(combined_df), unsafe_allow_html=True)
+                    # Organizar os botões de download em colunas para facilitar o acesso
+                    col1, col2, col3 = st.columns(3)
 
-                    # Adicionar opção para baixar o DataFrame processado final
-                    st.markdown(save_dataframe_as_excel(weighted_average_df), unsafe_allow_html=True)
+                    # Botão para baixar o histograma em formato PNG
+                    with col1:
+                        buf = io.BytesIO()
+                        fig.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+                        buf.seek(0)
+                        st.download_button(
+                            label="Baixar Histograma (PNG)",
+                            data=buf,
+                            file_name="histograma.png",
+                            mime="image/png"
+                        )
+
+                    # Botão para baixar as estatísticas em formato CSV
+                    with col2:
+                        csv_data = stats_df.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            label="Baixar Estatísticas (CSV)",
+                            data=csv_data,
+                            file_name="estatisticas.csv",
+                            mime="text/csv"
+                        )
+
+                    # Botão para baixar o DataFrame processado final em formato Excel com formatação condicional
+                    with col3:
+                        excel_buffer = save_dataframe_as_excel(weighted_average_df)
+                        st.download_button(
+                            label="Baixar Dados Processados (Excel)",
+                            data=excel_buffer,
+                            file_name="dados_processados.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        )
 
                     # Informar sobre a remoção de outliers, se aplicável
                     if remover_outliers:
