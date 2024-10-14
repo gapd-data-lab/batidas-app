@@ -81,7 +81,7 @@ ui:
     label: "Escolha o arquivo Excel (.xlsx)"     # Texto de instrução para o upload do arquivo Excel
     allowed_types: ["xlsx"]                      # Tipos de arquivo permitidos para upload
   analysis_config_header: "Configurações:"  # Cabeçalho da seção de configuração
-  food_weights_subheader: "Pesos relativos"      # Texto dos sliders
+  food_weights_subheader: "pesos relativos"      # Texto dos sliders
   date_input:
     label: "Selecione o período:"                # Texto de instrução para seleção de datas
   multiselect:
@@ -93,8 +93,15 @@ ui:
     help: "Remover valores extremos que podem distorcer a análise."  # Texto de ajuda sobre outliers
   generate_button: "Gerar"                       # Texto do botão de geração de resultados
   results_header: "Resultados da análise - conformidade das dietas"  # Título da seção de resultados
-  statistics_title: "Estatísticas principais" # Título da seção de estatísticas
-  outliers_removed_message: "Outliers foram removidos do histograma para melhor visualização."  # Mensagem ao remover outliers
+  statistics_title: "estatísticas principais"    # Título da seção de estatísticas
+  outliers_removed_message: "Outliers foram removidos."  # Mensagem ao remover outliers
+  conditional_formatting:
+    colors:
+      green: '00FF00'                            # Cor verde para valores entre 0 e low_1
+      red_light: 'FF9999'                        # Cor vermelho claro para valores entre low_1 e high_1
+      red_intense: 'FF0000'                      # Cor vermelho intenso para valores entre low_2 e high_2
+      black: '000000'                            # Cor preta para valores acima de high_2
+      white_font: 'FFFFFF'                       # Cor da fonte branca para valores acima de high_2
 
 # ----------------------------------------------------------------------
 # CONFIGURAÇÃO DA VISUALIZAÇÃO DO HISTOGRAMA

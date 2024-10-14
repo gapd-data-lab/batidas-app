@@ -8,6 +8,8 @@ import io
 import base64
 import pytz
 import yaml
+import openpyxl
+from openpyxl.styles import PatternFill
 
 def read_config(config_file="config.yaml"):
     """
@@ -581,7 +583,7 @@ def save_histogram_as_image(fig):
     fig.savefig(buf, format='png', dpi=300, bbox_inches='tight')
     buf.seek(0)
     b64 = base64.b64encode(buf.getvalue()).decode()
-    href = f'<a href="data:image/png;base64,{b64}" download="histograma.png">Download do Histograma (PNG)</a>'
+    href = f'<a href="data:image/png;base64,{b64}" download="histograma.png">- histograma(png)</a>'
     return href
 
 def save_statistics_as_csv(stats_df):
@@ -600,7 +602,50 @@ def save_statistics_as_csv(stats_df):
 
     csv = stats_df.to_csv(index=False)
     b64 = base64.b64encode(csv.encode()).decode()
-    href = f'<a href="data:file/csv;base64,{b64}" download="estatisticas.csv">Download das Estatísticas (CSV)</a>'
+    href = f'<a href="data:file/csv;base64,{b64}" download="estatisticas.csv">- estatísticas (csv)</a>'
+    return href
+
+def save_dataframe_as_excel(df):
+    """
+    Salva o DataFrame processado final como um arquivo Excel e retorna um link para download.
+
+    Args:
+    df (DataFrame): DataFrame contendo os dados processados e organizados por BATIDAS e suas médias de diferenças.
+
+    Returns:
+    str: Link para download do arquivo Excel gerado.
+    """
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Dados Processados')
+        workbook = writer.book
+        worksheet = writer.sheets['Dados Processados']
+
+        # Adicionar formatação condicional para a coluna B (MÉDIA PONDERADA)
+        color_config = config['ui']['conditional_formatting']['colors']
+
+        green_fill = PatternFill(start_color=color_config['green'], end_color=color_config['green'], fill_type='solid')
+        red_fill_light = PatternFill(start_color=color_config['red_light'], end_color=color_config['red_light'], fill_type='solid')
+        red_fill_intense = PatternFill(start_color=color_config['red_intense'], end_color=color_config['red_intense'], fill_type='solid')
+        black_fill = PatternFill(start_color=color_config['black'], end_color=color_config['black'], fill_type='solid')
+        white_font = openpyxl.styles.Font(color=color_config['white_font'])
+
+        for row in range(2, len(df) + 2):
+            cell = worksheet[f'B{row}']
+            cell.number_format = '0.00'  # Definir o número de casas decimais como 2
+            if cell.value <= config['statistics']['interval_limits']['low_1']:
+                cell.fill = green_fill
+            elif config['statistics']['interval_limits']['low_1'] < cell.value <= config['statistics']['interval_limits']['high_1']:
+                cell.fill = red_fill_light
+            elif config['statistics']['interval_limits']['low_2'] < cell.value <= config['statistics']['interval_limits']['high_2']:
+                cell.fill = red_fill_intense
+            elif cell.value > config['statistics']['interval_limits']['high_2']:
+                cell.fill = black_fill
+                cell.font = white_font
+        
+    buffer.seek(0)
+    b64 = base64.b64encode(buffer.getvalue()).decode()
+    href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="dados_processados.xlsx">- dados processados (excel)</a>'
     return href
 
 def main():
@@ -729,9 +774,6 @@ def main():
                 fig = create_histogram(weighted_average_df, start_date, end_date, remover_outliers, pesos_relativos, config=config)
                 st.pyplot(fig)
 
-                # Adicionar opção para salvar o histograma
-                st.markdown(save_histogram_as_image(fig), unsafe_allow_html=True)
-
                 # Criar duas colunas para exibir as tabelas de estatísticas e pesos lado a lado
                 col1, col2 = st.columns(2)
 
@@ -747,16 +789,27 @@ def main():
                     pesos_df = pd.DataFrame(list(pesos_relativos.items()), columns=['Tipo de Alimento', 'Peso Relativo'])
                     st.write(pesos_df)
 
-                # Adicionar data de geração e opção para download dos arquivos CSV
-                data_geracao = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                stats_df['Data de Geração'] = data_geracao
-                pesos_df['Data de Geração'] = data_geracao
-                combined_df = pd.concat([stats_df, pesos_df], ignore_index=True, sort=False)
-                st.markdown(save_statistics_as_csv(combined_df), unsafe_allow_html=True)
+                # Agrupar todas as opções de salvamento em um container abaixo da tabela de estatísticas
+                with st.container():
+                    st.subheader("downloads")
+                    
+                    # Adicionar opção para salvar o histograma
+                    st.markdown(save_histogram_as_image(fig), unsafe_allow_html=True)
 
-                # Informar sobre a remoção de outliers, se aplicável
-                if remover_outliers:
-                    st.info(config['ui'].get('outliers_removed_message', "Outliers foram removidos do histograma para melhor visualização."))
+                    # Adicionar opção para salvar as estatísticas em CSV
+                    data_geracao = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    stats_df['Data de Geração'] = data_geracao
+                    pesos_df['Data de Geração'] = data_geracao
+                    combined_df = pd.concat([stats_df, pesos_df], ignore_index=True, sort=False)
+                    st.markdown(save_statistics_as_csv(combined_df), unsafe_allow_html=True)
+
+                    # Adicionar opção para baixar o DataFrame processado final
+                    st.markdown(save_dataframe_as_excel(weighted_average_df), unsafe_allow_html=True)
+
+                    # Informar sobre a remoção de outliers, se aplicável
+                    if remover_outliers:
+                        st.info(config['ui'].get('outliers_removed_message', "outliers foram removidos."))
+
             else:
                 st.error("Não foi possível calcular as médias ponderadas. Verifique os dados e tente novamente.")
 
