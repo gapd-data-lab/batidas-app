@@ -261,22 +261,21 @@ def calculate_weighted_average_with_weights(df, pesos_relativos, config):
 
 def create_statistics_dataframe(weighted_average_df, remove_outliers=False, config=None):
     """
-    Cria um DataFrame com as principais estatísticas das diferenças percentuais.
+    Cria um DataFrame com estatísticas das diferenças percentuais.
 
-    Args:
-    weighted_average_df (DataFrame): DataFrame contendo as médias ponderadas das diferenças percentuais.
-    remove_outliers (bool): Se True, remove outliers antes de calcular as estatísticas.
-    config (dict): Dicionário de configuração contendo os parâmetros necessários.
+    Argumentos:
+    weighted_average_df: DataFrame com médias ponderadas das diferenças percentuais.
+    remove_outliers: Se True, remove outliers antes dos cálculos.
+    config: Dicionário com parâmetros de configuração.
 
-    Returns:
-    DataFrame: DataFrame contendo as estatísticas calculadas, incluindo:
-        - Número de batidas (linhas no DataFrame)
-        - Média ponderada das diferenças percentuais
-        - Mediana das diferenças percentuais
-        - Contagem de batidas em intervalos específicos.
+    Retorna:
+    DataFrame com estatísticas:
+    - Número de batidas
+    - Média e mediana ponderadas
+    - Contagem de batidas em intervalos específicos
 
-    A função calcula a média e mediana das diferenças percentuais e conta quantas batidas estão em 
-    intervalos específicos de variação. Se solicitado, remove outliers antes do cálculo.
+    Calcula estatísticas e conta batidas em intervalos definidos. 
+    Remove outliers se solicitado.
     """
     # Verificar se `config` foi passado e se contém a seção necessária
     if config is None:
