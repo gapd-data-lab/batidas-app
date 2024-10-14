@@ -57,7 +57,7 @@ numeric_columns:
 # ----------------------------------------------------------------------
 slider:
   min_value: 0.5                          # Valor mínimo permitido para os sliders
-  max_value: 3.5                          # Valor máximo permitido para os sliders
+  max_value: 2.5                          # Valor máximo permitido para os sliders
   default_value: 1.0                      # Valor padrão para os sliders
   step: 0.1                               # Incremento de ajuste para os sliders (precisão)
 
