@@ -772,8 +772,8 @@ def main():
                 fig = create_histogram(weighted_average_df, start_date, end_date, remover_outliers, pesos_relativos, config=config)
                 st.pyplot(fig)
 
-                # Criar duas colunas para exibir as tabelas de estatísticas e pesos lado a lado
-                col1, col2 = st.columns(2)
+                # Criar três colunas para exibir as tabelas de estatísticas e pesos lado a lado
+                col1, col2, col3 = st.columns(3)
 
                 # Exibir estatísticas na primeira coluna
                 with col1:
@@ -787,48 +787,42 @@ def main():
                     pesos_df = pd.DataFrame(list(pesos_relativos.items()), columns=['Tipo de Alimento', 'Peso Relativo'])
                     st.write(pesos_df)
 
-                # Agrupar todas as opções de salvamento em um container bem estruturado
-                with st.container():
-                    st.subheader("Downloads")
-
-                    # Organizar os botões de download em colunas para facilitar o acesso
-                    col1, col2, col3 = st.columns(3)
+                 # Exibir downloads
+                with col3:
+                    st.subheader("downloads")
 
                     # Botão para baixar o histograma em formato PNG
-                    with col1:
-                        buf = io.BytesIO()
-                        fig.savefig(buf, format='png', dpi=300, bbox_inches='tight')
-                        buf.seek(0)
-                        st.download_button(
-                            label="Baixar Histograma (PNG)",
-                            data=buf,
-                            file_name="histograma.png",
-                            mime="image/png"
-                        )
+                    buf = io.BytesIO()
+                    fig.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+                    buf.seek(0)
+                    st.download_button(
+                        label="histograma (PNG)",
+                        data=buf,
+                        file_name="histograma.png",
+                        mime="image/png"
+                    )
 
                     # Botão para baixar as estatísticas em formato CSV
-                    with col2:
-                        csv_data = stats_df.to_csv(index=False).encode('utf-8')
-                        st.download_button(
-                            label="Baixar Estatísticas (CSV)",
-                            data=csv_data,
-                            file_name="estatisticas.csv",
-                            mime="text/csv"
-                        )
+                    csv_data = stats_df.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="estatísticas (CSV)",
+                        data=csv_data,
+                        file_name="estatisticas.csv",
+                        mime="text/csv"
+                    )
 
                     # Botão para baixar o DataFrame processado final em formato Excel com formatação condicional
-                    with col3:
-                        excel_buffer = save_dataframe_as_excel(weighted_average_df)
-                        st.download_button(
-                            label="Baixar Dados Processados (Excel)",
-                            data=excel_buffer,
-                            file_name="dados_processados.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                        )
+                    excel_buffer = save_dataframe_as_excel(weighted_average_df)
+                    st.download_button(
+                        label="dados processados (Excel)",
+                        data=excel_buffer,
+                        file_name="dados_processados.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
 
                     # Informar sobre a remoção de outliers, se aplicável
                     if remover_outliers:
-                        st.info(config['ui'].get('outliers_removed_message', "outliers foram removidos."))
+                        st.info(config['ui'].get('outliers_removed_message'))
 
             else:
                 st.error("Não foi possível calcular as médias ponderadas. Verifique os dados e tente novamente.")
