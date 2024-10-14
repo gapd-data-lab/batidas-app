@@ -123,7 +123,7 @@ streamlit run batidas.py
 git status
 git add batidas.py instructions_for_app_batidas.md requirements.txt pseudocode.md config.yaml requirements.md formula_calculo.tex
 git commit -m "Updated version of batidas app - improvements in graph, statistics table and in config.yaml"
-git push origin main
+git push origin master
 ```
 
 ## Virtual Environment Activation

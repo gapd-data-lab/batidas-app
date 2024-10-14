@@ -90,8 +90,8 @@ ui:
     operator_label: "Escolha os Operadores:"     # Texto de instrução para selecionar operadores
   date_selection:
     type_label: "Selecione o tipo de filtro de data:"
-    single_date_label: "Selecione a data:"
-    date_range_label: "Selecione o intervalo de datas:"
+    single_date_label: "data única:"
+    date_range_label: "intervalo de datas:"
   remove_outliers:
     label: "Remover outliers do histograma"      # Texto de instrução para remover outliers
     help: "Remover valores extremos que podem distorcer a análise."  # Texto de ajuda sobre outliers
